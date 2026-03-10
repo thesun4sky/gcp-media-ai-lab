@@ -1,0 +1,28 @@
+# Colab 전용 requirements
+# - Colab(Python 3.12)에 이미 설치된 패키지(numpy, pandas, scikit-learn, Pillow 등)는 제외
+# - GCP API 클라이언트와 미디어 처리 패키지만 설치
+# - 버전 고정 없이 최신 호환 버전 사용
+
+# Google Cloud APIs
+google-cloud-videointelligence
+google-cloud-speech
+google-cloud-translate
+google-cloud-storage
+google-cloud-bigquery
+google-cloud-bigquery-storage
+google-cloud-aiplatform
+vertexai
+
+# BigQuery pandas 연동
+pandas-gbq
+
+# Media processing (Colab에 미설치)
+moviepy
+ffmpeg-python
+pydub
+librosa
+
+# Utilities
+pyyaml
+python-dotenv
+tqdm
