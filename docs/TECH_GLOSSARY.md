@@ -1,6 +1,7 @@
 # GCP Media AI Lab — 기술 용어 및 개념 완전 정리
 
 > 이 문서는 실습에 등장한 모든 기술, 용어, 모델, 연산식을 초보자도 이해할 수 있도록 상세하게 정리합니다.
+> 수학 수식은 기호 대신 말로 풀어서 설명하며, 각 개념마다 비교군을 함께 정리합니다.
 
 ---
 
@@ -9,12 +10,15 @@
 1. [GCP 서비스](#1-gcp-서비스)
 2. [미디어 처리 기술](#2-미디어-처리-기술)
 3. [인증 및 보안](#3-인증-및-보안)
-4. [추천 시스템 — 수식 포함](#4-추천-시스템--수식-포함)
+4. [추천 시스템 — 유사도 연산 포함](#4-추천-시스템--유사도-연산-포함)
 5. [딥러닝 기초](#5-딥러닝-기초)
-6. [PyTorch 최적화 기술](#6-pytorch-최적화-기술)
-7. [GPU 하드웨어 개념](#7-gpu-하드웨어-개념)
-8. [데이터 포맷 및 파일 형식](#8-데이터-포맷-및-파일-형식)
-9. [Python 생태계 도구](#9-python-생태계-도구)
+6. [신경망 구조 비교 — CNN vs ANN vs RNN vs Transformer](#6-신경망-구조-비교--cnn-vs-ann-vs-rnn-vs-transformer)
+7. [유사도 연산 상세 비교](#7-유사도-연산-상세-비교)
+8. [PyTorch 최적화 기술](#8-pytorch-최적화-기술)
+9. [CUDA와 Triton — 유사성·연관성·차이점 완전 정리](#9-cuda와-triton--유사성연관성차이점-완전-정리)
+10. [GPU 하드웨어 개념](#10-gpu-하드웨어-개념)
+11. [데이터 포맷 및 파일 형식](#11-데이터-포맷-및-파일-형식)
+12. [Python 생태계 도구](#12-python-생태계-도구)
 
 ---
 
@@ -48,6 +52,15 @@
 - 0.9 이상: 매우 확실
 - 0.7 이상: 일반적으로 신뢰 가능
 - 0.5 미만: 불확실
+
+**비교군: 유사 서비스**
+
+| 서비스 | 공급자 | 특징 | 차이점 |
+|--------|--------|------|--------|
+| Video Intelligence API | Google Cloud | 장면/레이블/객체 추적 강점 | BigQuery 연동 용이 |
+| Amazon Rekognition | AWS | 얼굴 인식 강점 | S3 연동 자연스러움 |
+| Azure Video Analyzer | Microsoft | Azure 생태계 통합 | Teams/Office 연동 |
+| OpenCV | 오픈소스 | 직접 구현, 무료 | 학습된 모델 없음, 코딩 필요 |
 
 ---
 
@@ -89,6 +102,15 @@ RecognitionConfig(
 
 STT는 16kHz로도 충분히 정확함 → 파일 크기 절약
 ```
+
+**비교군: STT 서비스**
+
+| 서비스 | 한국어 정확도 | 실시간 지원 | 가격 |
+|--------|--------------|------------|------|
+| Google STT | 매우 높음 | 지원 | 분당 과금 |
+| OpenAI Whisper | 높음 | 로컬 실행 가능 | 무료(오픈소스) |
+| Naver CLOVA Speech | 높음(한국어 특화) | 지원 | 건당 과금 |
+| Amazon Transcribe | 높음 | 지원 | 분당 과금 |
 
 ---
 
@@ -223,9 +245,6 @@ Archive   : 연 1회 미만 접근 (365일 최소 보관, 가장 저렴)
 **무엇인가?**
 오디오/비디오 변환, 편집, 스트리밍을 처리하는 오픈소스 도구. 미디어 처리의 사실상 표준.
 
-**왜 "Fast Forward"인가?**
-MPEG 표준의 빠른 순방향(fast forward) 처리를 목표로 개발했기 때문.
-
 **주요 사용 예시**
 ```bash
 # MP4에서 음성만 추출 → FLAC 변환
@@ -254,7 +273,7 @@ ffmpeg -i input.mp4 -ss 10 -to 30 output.mp4
 **정식 명칭**: Free Lossless Audio Codec
 
 **무엇인가?**
-음질 손상 없이 파일 크기를 줄이는 무손실 오디오 압축 포맷. "무손실"이 핵심.
+음질 손상 없이 파일 크기를 줄이는 무손실 오디오 압축 포맷.
 
 **손실 vs 무손실 압축**
 ```
@@ -273,13 +292,7 @@ ffmpeg -i input.mp4 -ss 10 -to 30 output.mp4
   → STT, 의학, 법원 녹취에 사용
 ```
 
-**STT에 FLAC를 쓰는 이유**
-```
-MP3/AAC: AI가 분석할 때 이미 손실된 데이터 → 인식 오류 가능
-FLAC:    원본 그대로 → 더 높은 인식 정확도
-```
-
-**비교군**
+**오디오 포맷 비교**
 
 | 포맷 | 압축 방식 | 파일크기 | 음질 | 주 용도 |
 |------|----------|---------|------|---------|
@@ -288,6 +301,7 @@ FLAC:    원본 그대로 → 더 높은 인식 정확도
 | AAC | 손실 | ~10% | 우수 | 스트리밍 |
 | MP3 | 손실 | ~10% | 양호 | 범용 |
 | OGG | 손실 | ~8% | 양호 | 게임, 웹 |
+| Opus | 손실 | ~7% | 우수 | 실시간 통화 |
 
 ---
 
@@ -313,8 +327,6 @@ WEBVTT
 00:00:01.500 --> 00:00:04.200
 안녕하세요, 오늘은 Media AI에 대해 알아보겠습니다.
 ```
-
-SRT와 거의 동일하지만 웹 표준(HTML5 `<track>` 태그) 지원.
 
 **차이점**
 
@@ -354,6 +366,15 @@ MP4 컨테이너 안의 내용:
   FLAC: 무손실
   Opus: 실시간 스트리밍 최적 (Discord, WebRTC)
 ```
+
+**영상 코덱 비교**
+
+| 코덱 | 압축 효율 | 인코딩 속도 | 라이선스 | 주 사용처 |
+|------|----------|-----------|---------|---------|
+| H.264 | 보통 | 빠름 | 특허료 | 범용 |
+| H.265 | H.264 대비 2배 | 느림 | 특허료 높음 | 4K 스트리밍 |
+| VP9 | H.265 수준 | 느림 | 무료 | YouTube |
+| AV1 | VP9 대비 30% 향상 | 매우 느림 | 무료 | Netflix, 차세대 |
 
 ---
 
@@ -420,7 +441,7 @@ client = videointelligence.VideoIntelligenceServiceClient(
 
 ---
 
-## 4. 추천 시스템 — 수식 포함
+## 4. 추천 시스템 — 유사도 연산 포함
 
 ### 4-1. 협업 필터링 (Collaborative Filtering)
 
@@ -439,6 +460,16 @@ client = videointelligence.VideoIntelligenceServiceClient(
   → video_X를 본 사람에게 비슷한 video_Y 추천
 ```
 
+**추천 시스템 방식 비교**
+
+| 방식 | 설명 | 장점 | 단점 |
+|------|------|------|------|
+| 협업 필터링 | 유사 사용자 기반 | 개인화 강함 | 콜드 스타트 문제 |
+| 콘텐츠 기반 | 아이템 속성 기반 | 새 아이템에 강함 | 다양성 부족 |
+| 행렬 분해 | 잠재 요인 학습 | 정확도 높음 | 학습 비용 큼 |
+| 하이브리드 | 협업 + 콘텐츠 혼합 | 균형 잡힘 | 구현 복잡 |
+| 딥러닝 기반 | 신경망 임베딩 | 복잡한 패턴 학습 | 해석 어려움 |
+
 ---
 
 ### 4-2. 암시적 평점 (Implicit Rating)
@@ -452,15 +483,11 @@ client = videointelligence.VideoIntelligenceServiceClient(
   → 데이터 많음, 자연스러운 선호도 반영
 ```
 
-**본 프로젝트의 암시적 평점 공식**
+**본 프로젝트의 암시적 평점 계산 방법**
 
-$$\text{implicit\_rating} = \text{completion\_rate} \times 3.0 + \text{liked} \times 2.0 + \text{shared} \times 1.0$$
+시청 완료율에 3.0을 곱하고, 좋아요 여부에 2.0을 곱하고, 공유 여부에 1.0을 곱한 뒤 세 값을 더하면 암시적 평점이 됩니다.
 
 ```
-completion_rate: 영상 시청 완료율 (0.0 ~ 1.0)
-liked: 좋아요 여부 (0 또는 1)
-shared: 공유 여부 (0 또는 1)
-
 가중치 의미:
   3.0 × 시청률: 가장 중요한 지표 (의도치 않은 행동)
   2.0 × 좋아요: 적극적인 긍정 신호
@@ -490,23 +517,9 @@ user_B = [5.2,  3.1,  0.0,  1.8,  4.0]
 공통으로 본 영상: 영상1(4.7 vs 5.2), 영상5(3.5 vs 4.0)
 ```
 
-**코사인 유사도 공식**
+**코사인 유사도 계산 방법 (말로 설명)**
 
-$$\text{cosine\_similarity}(A, B) = \frac{A \cdot B}{|A| \times |B|}$$
-
-각 항목 설명:
-```
-A · B (내적, Dot Product):
-  = A₁×B₁ + A₂×B₂ + ... + Aₙ×Bₙ
-  = 두 벡터에서 공통으로 높은 값일수록 크게 기여
-
-|A| (벡터의 크기, Norm):
-  = √(A₁² + A₂² + ... + Aₙ²)
-  = 벡터의 "길이"
-
-÷ (|A| × |B|): 정규화
-  → 많이 시청한 사람과 적게 시청한 사람을 공평하게 비교
-```
+두 벡터 A와 B의 코사인 유사도는, A와 B의 내적(각 차원의 값을 곱해서 모두 더한 값)을 A의 크기와 B의 크기의 곱으로 나눈 값입니다. 내적은 두 사람이 같은 영상을 높게 평가할수록 커집니다. 크기로 나누는 것은 많이 시청한 사람과 적게 시청한 사람을 공평하게 비교하기 위한 정규화 과정입니다. 결과는 -1에서 1 사이이며, 1에 가까울수록 취향이 비슷합니다.
 
 **계산 예시**
 ```
@@ -516,8 +529,8 @@ user_B = [5.2, 3.1, 4.0]
 내적 = 4.7×5.2 + 0.0×3.1 + 3.5×4.0
      = 24.44 + 0 + 14.0 = 38.44
 
-|A| = √(4.7² + 0² + 3.5²) = √(22.09 + 0 + 12.25) = √34.34 = 5.86
-|B| = √(5.2² + 3.1² + 4.0²) = √(27.04 + 9.61 + 16.0) = √52.65 = 7.26
+A의 크기 = 루트(4.7² + 0² + 3.5²) = 루트(22.09 + 0 + 12.25) = 루트(34.34) = 5.86
+B의 크기 = 루트(5.2² + 3.1² + 4.0²) = 루트(27.04 + 9.61 + 16.0) = 루트(52.65) = 7.26
 
 유사도 = 38.44 / (5.86 × 7.26) = 38.44 / 42.54 = 0.90
 
@@ -540,15 +553,11 @@ dot_product / (norm_a * norm_b) AS cosine_similarity
 
 ### 4-4. 유사도 가중 추천 점수
 
-**공식**
+**계산 방법 (말로 설명)**
 
-$$\text{confidence\_score}(v) = \frac{\sum_{u \in \text{similar\_users}} \text{rating}(u, v) \times \text{similarity}(me, u)}{\sum_{u \in \text{similar\_users}} \text{similarity}(me, u)}$$
+특정 영상의 추천 점수는 유사한 사용자들이 준 평점을 유사도로 가중 평균하여 구합니다. 구체적으로는, 각 유사 사용자의 평점에 나와의 유사도를 곱한 값들을 모두 더하고, 이를 유사도의 합으로 나눕니다. 이렇게 하면 나와 취향이 90% 일치하는 사람의 의견이 50% 일치하는 사람의 의견보다 더 많이 반영됩니다.
 
 ```
-쉬운 설명:
-  "나와 90% 유사한 사람이 준 점수" + "나와 50% 유사한 사람이 준 점수"
-  → 유사한 사람의 의견을 더 많이 반영
-
 예시: 영상X의 추천 점수 계산
   유사유저A (유사도=0.90) × 평점 6.0 = 5.4
   유사유저B (유사도=0.70) × 평점 4.0 = 2.8
@@ -573,11 +582,11 @@ user_B:   5.2   3.1   ?     1.8
 user_C:   ?     ?     3.5   4.2
 
 → 두 작은 행렬로 분해:
-  R ≈ U × V^T
+  R ≈ U × V의 전치행렬
   U: 사용자 잠재 벡터 (사용자 취향 요약)
   V: 아이템 잠재 벡터 (영상 특성 요약)
 
-→ U × V^T로 빈 칸 예측 가능
+→ 분해된 행렬의 곱으로 빈 칸 예측 가능
 ```
 
 **코사인 유사도 vs 행렬 분해**
@@ -607,6 +616,16 @@ user_C:   ?     ?     3.5   4.2
 4차원 텐서: (배치, 채널, 높이, 너비) = (4, 3, 224, 224)  ← 이미지
 5차원 텐서: (배치, 프레임, 채널, 높이, 너비) ← 영상
 ```
+
+**PyTorch vs TensorFlow 비교**
+
+| 항목 | PyTorch | TensorFlow |
+|------|---------|------------|
+| 실행 방식 | 즉시 실행 (Eager) | 정적 그래프 (TF1) / Eager (TF2) |
+| 사용 편의성 | Python 친화적, 직관적 | 초기 학습 곡선 있음 |
+| 연구 채택률 | 학계 압도적 우위 | 산업계 다수 사용 |
+| 모바일 배포 | TorchScript/ONNX | TFLite 성숙 |
+| 기본 배열 이름 | Tensor | Tensor |
 
 ---
 
@@ -653,12 +672,12 @@ V (Value): "실제 전달할 정보"
   V = 관련성에 따라 가중 평균한 정보
 ```
 
-**수식**
+**Attention 계산 방법 (말로 설명)**
 
-$$\text{Attention}(Q, K, V) = \text{softmax}\left(\frac{QK^T}{\sqrt{d_k}}\right)V$$
+쿼리 행렬(Q)과 키 행렬(K)을 행렬 곱한 뒤, 키의 차원 크기의 제곱근으로 나눠 값이 너무 커지는 것을 방지합니다. 이 결과에 소프트맥스를 적용해 각 위치의 가중치 합이 1이 되는 확률 분포를 만들고, 마지막으로 밸류 행렬(V)과 곱해 가중 평균된 출력을 얻습니다.
 
 ```
-Q @ K^T: 모든 쿼리-키 쌍의 유사도 계산
+Q @ K^T: 모든 쿼리-키 쌍의 유사도 계산 (행렬 곱)
 √d_k로 나누기: 값이 너무 커지지 않도록 스케일링
 softmax: 합이 1이 되는 확률 분포로 변환
 × V: 확률에 따라 가중 평균
@@ -671,47 +690,326 @@ softmax: 합이 1이 되는 확률 분포로 변환
 **왜 필요한가?**
 딥러닝에서 각 층의 출력값 분포가 불안정해지면 학습이 어려워짐.
 
-**공식**
+**정규화 방법 (말로 설명)**
 
-$$\text{LayerNorm}(x) = \gamma \cdot \frac{x - \mu}{\sqrt{\sigma^2 + \epsilon}} + \beta$$
+현재 레이어 출력값들의 평균을 구하고 각 값에서 빼줍니다. 그 결과를 표준편차로 나눠 평균 0, 표준편차 1인 분포로 만듭니다. 0으로 나누는 오류를 막기 위해 분모에 아주 작은 값(약 0.00001)을 더합니다. 마지막으로 학습 가능한 스케일 파라미터(감마)와 이동 파라미터(베타)를 곱하고 더해서 모델이 최적의 분포를 스스로 찾도록 합니다.
 
 ```
 μ (평균): 현재 레이어 출력의 평균
 σ (표준편차): 현재 레이어 출력의 퍼짐 정도
-(x - μ) / σ: 평균 0, 표준편차 1로 정규화
+정규화: (x - 평균) / 표준편차
 γ, β: 학습 가능한 파라미터 (스케일, 이동)
 ε: 0으로 나누는 것 방지 (보통 1e-5)
 ```
+
+**정규화 방법 비교**
+
+| 방법 | 정규화 대상 | 장점 | 단점 | 주로 사용 |
+|------|-----------|------|------|---------|
+| BatchNorm | 배치 전체 | 빠른 학습 | 배치 크기 의존 | CNN |
+| LayerNorm | 각 샘플 개별 | 배치 크기 무관 | 약간 느림 | Transformer |
+| InstanceNorm | 채널 개별 | 스타일 변환 강점 | 정보 손실 | GAN |
+| GroupNorm | 채널 그룹 | 소배치에 강함 | 그룹 수 튜닝 필요 | 객체 감지 |
 
 ---
 
 ### 5-5. GELU 활성화 함수
 
 **무엇인가?**
-뉴런 출력을 0~1 사이로 변환하는 비선형 함수. Transformer에서 ReLU 대신 사용.
+뉴런 출력을 비선형 변환하는 함수. Transformer에서 ReLU 대신 사용.
 
-**공식**
+**GELU 계산 방법 (말로 설명)**
 
-$$\text{GELU}(x) = x \cdot \Phi(x)$$
+GELU는 입력값 x에 표준 정규분포의 누적확률(x보다 작은 값이 나올 확률)을 곱한 값입니다. 실제 구현에서는 이를 tanh 함수를 이용한 근사식으로 계산합니다. x에 0.5를 곱하고, 여기에 tanh(루트(2/파이)×(x + 0.044715×x의 세제곱))의 결과에 1을 더한 값을 곱합니다.
 
-여기서 $\Phi(x)$는 표준 정규분포의 CDF (누적분포함수).
+**활성화 함수 비교**
 
-**근사식** (실제 구현)
+| 함수 | 특성 | 장점 | 단점 | 주 사용처 |
+|------|------|------|------|---------|
+| ReLU | x>0이면 x, 아니면 0 | 빠름, 단순 | 음수 죽는 뉴런 문제 | CNN |
+| Leaky ReLU | 음수에 작은 기울기 | 죽는 뉴런 완화 | 하이퍼파라미터 추가 | GAN |
+| GELU | 확률적 부드러운 경계 | Transformer에 최적 | ReLU보다 약간 느림 | BERT, GPT |
+| SiLU/Swish | x × 시그모이드(x) | GELU와 유사 성능 | 계산 비용 | LLaMA |
+| Sigmoid | 0~1 출력 | 확률 표현 | 기울기 소실 | 이진 분류 출력층 |
 
-$$\text{GELU}(x) \approx 0.5x \left(1 + \tanh\left[\sqrt{\frac{2}{\pi}}(x + 0.044715x^3)\right]\right)$$
+---
 
-**ReLU와 비교**
+## 6. 신경망 구조 비교 — CNN vs ANN vs RNN vs Transformer
+
+### 6-1. ANN (Artificial Neural Network, 인공 신경망)
+
+**무엇인가?**
+가장 기본적인 형태의 신경망. 입력층 → 은닉층 → 출력층으로 구성된 완전 연결(Fully Connected) 구조.
+
 ```
-ReLU(x) = max(0, x)  → x<0이면 무조건 0 (딱딱한 경계)
-GELU(x)              → x<0에서도 작은 값 통과 (부드러운 경계)
-                     → Transformer 계열에서 더 좋은 성능
+입력: [1, 2, 3, 4, 5]
+  ↓ (모든 입력이 모든 뉴런에 연결)
+은닉층: 각 뉴런 = 입력들의 가중합 + 활성화 함수
+  ↓
+출력: [0.1, 0.9] (이진 분류 예시)
+```
+
+**특징**
+- 순서나 공간 정보를 고려하지 않음
+- 파라미터 수가 많음 (모든 연결에 가중치)
+- 구조가 단순하여 이해하기 쉬움
+
+---
+
+### 6-2. CNN (Convolutional Neural Network, 합성곱 신경망)
+
+**무엇인가?**
+이미지나 영상처럼 공간적 구조가 있는 데이터에 특화된 신경망. 작은 필터로 슬라이딩하며 특징을 추출.
+
+```
+이미지 입력 (224×224×3)
+  ↓ Conv Layer (필터로 엣지, 텍스처 등 로컬 특징 추출)
+  ↓ Pooling (크기 축소, 중요 특징만 보존)
+  ↓ Conv Layer (더 추상적인 특징 추출)
+  ↓ Flatten (1차원으로 펼침)
+  ↓ Fully Connected (ANN과 동일)
+  ↓ 출력: [강아지 0.95, 고양이 0.03, ...]
+```
+
+**CNN 특징 추출 과정**
+```
+1층: 엣지(가로선, 세로선, 대각선) 감지
+2층: 형태(모서리, 곡선) 감지
+3층: 패턴(눈, 코, 귀 형태) 감지
+4층: 객체(얼굴, 몸통) 감지
+→ 계층적 특징 학습
 ```
 
 ---
 
-## 6. PyTorch 최적화 기술
+### 6-3. RNN (Recurrent Neural Network, 순환 신경망)
 
-### 6-1. torch.compile
+**무엇인가?**
+순서가 있는 데이터(텍스트, 시계열)에 특화된 신경망. 이전 시점의 정보를 다음 시점에 전달.
+
+```
+"나는 사과를 먹었다" 처리:
+  h0(초기) → "나는" → h1
+  h1 → "사과를" → h2    ← h1 정보 포함
+  h2 → "먹었다" → h3    ← h1, h2 정보 포함
+  h3 → 문장 이해 결과
+```
+
+**RNN 변종**
+
+| 종류 | 특징 | 문제 해결 | 주 사용처 |
+|------|------|---------|---------|
+| 기본 RNN | 간단한 순환 | - | 교육용 |
+| LSTM | 장기 기억 게이트 | 기울기 소실 | 번역, 음성 |
+| GRU | LSTM 간소화 | 기울기 소실 (빠름) | 번역, 시계열 |
+
+---
+
+### 6-4. Transformer
+
+**무엇인가?**
+Self-Attention으로 모든 위치 쌍의 관계를 동시에 계산. RNN의 순차 처리 한계를 극복.
+
+```
+"나는 사과를 먹었다" 처리:
+  "나는"이 "먹었다"와 얼마나 관련? → 동시에 계산
+  "사과"가 "먹었다"와 얼마나 관련? → 동시에 계산
+  모든 단어 쌍 관계 → 병렬 처리 가능
+```
+
+---
+
+### 6-5. 네 가지 구조 종합 비교
+
+| 항목 | ANN | CNN | RNN/LSTM | Transformer |
+|------|-----|-----|----------|-------------|
+| 주요 데이터 | 정형 데이터 | 이미지/영상 | 시계열/텍스트 | 텍스트/멀티모달 |
+| 공간 정보 활용 | 없음 | 강함 | 없음 | Attention으로 처리 |
+| 순서 정보 활용 | 없음 | 없음 | 강함 | Position Encoding |
+| 병렬 처리 | 가능 | 가능 | 불가 (순차) | 가능 |
+| 장기 의존성 | 약함 | 약함 | LSTM으로 개선 | 강함 |
+| 파라미터 수 | 많음 | 적음(공유) | 보통 | 매우 많음 |
+| 대표 모델 | MLP | ResNet, VGG | LSTM, GRU | BERT, GPT |
+| 주요 응용 | 분류, 회귀 | 이미지 인식 | 번역, 음성 | LLM, 번역 |
+
+---
+
+### 6-6. CNN 연산의 유사도 활용
+
+CNN에서 유사도는 다음과 같이 활용됩니다.
+
+**특징 벡터 추출 후 유사도 계산**
+```python
+# CNN으로 이미지 특징 추출
+model = ResNet50(pretrained=True)
+feature_A = model(image_A)  # 예: [1, 2048] 벡터
+feature_B = model(image_B)
+
+# 코사인 유사도로 이미지 유사성 판단
+import torch.nn.functional as F
+similarity = F.cosine_similarity(feature_A, feature_B)
+# → 1.0에 가까울수록 유사한 이미지
+```
+
+**이미지 검색 시스템 구조**
+```
+질의 이미지
+  ↓ CNN (특징 추출기)
+  ↓ 2048차원 특징 벡터
+  ↓ 코사인 유사도 계산
+  ↓ DB의 수백만 이미지 벡터들과 비교
+  → 가장 유사한 Top-K 이미지 반환
+```
+
+---
+
+## 7. 유사도 연산 상세 비교
+
+### 7-1. 유사도 측정 방법 종합 비교
+
+**코사인 유사도 (Cosine Similarity)**
+
+두 벡터가 이루는 각도의 코사인 값입니다. 두 벡터의 내적을 각 벡터의 크기의 곱으로 나눕니다. 벡터의 방향이 같으면 1, 수직이면 0, 반대이면 -1이 나옵니다. 크기(절댓값)를 무시하고 방향만 비교하므로, 문서 길이나 사용자 시청량 차이를 정규화할 수 있습니다.
+
+```python
+import torch
+import torch.nn.functional as F
+
+a = torch.tensor([4.7, 0.0, 3.5])
+b = torch.tensor([5.2, 3.1, 4.0])
+similarity = F.cosine_similarity(a.unsqueeze(0), b.unsqueeze(0))
+# → tensor([0.9003])
+```
+
+**유클리드 거리 (Euclidean Distance)**
+
+두 벡터 사이의 직선 거리입니다. 각 차원의 차이를 제곱해서 더한 뒤 제곱근을 취합니다. 값이 0이면 동일, 클수록 멀리 떨어져 있습니다. 코사인 유사도와 달리 크기 차이도 반영합니다.
+
+```python
+distance = torch.dist(a, b, p=2)
+# p=2 는 유클리드 거리
+# p=1 이면 맨해튼 거리
+```
+
+**내적 (Dot Product)**
+
+각 차원의 값을 곱해서 모두 더한 값입니다. 코사인 유사도에서 정규화를 하지 않은 형태입니다. 벡터가 정규화되어 있으면 코사인 유사도와 동일해집니다. 추천 시스템에서 빠른 유사도 계산에 사용합니다.
+
+```python
+dot_product = torch.dot(a, b)
+# → tensor(38.4400)
+```
+
+**유사도 방법 비교**
+
+| 방법 | 계산 방식 | 범위 | 크기 반영 | 주 사용처 |
+|------|---------|------|---------|---------|
+| 코사인 유사도 | 내적 / (크기 × 크기) | -1 ~ 1 | 아니오 | 추천, NLP |
+| 유클리드 거리 | 각 차원 차이의 거리 | 0 ~ 무한 | 예 | 클러스터링 |
+| 내적 (Dot Product) | 각 차원 곱의 합 | -무한 ~ 무한 | 예 | FAISS, 행렬곱 |
+| 맨해튼 거리 | 각 차원 차이의 절댓값 합 | 0 ~ 무한 | 예 | 로보틱스, 격자 |
+| 해밍 거리 | 다른 비트 수 | 0 ~ n | 이진 | 해시, DNA |
+| Jaccard 유사도 | 교집합 / 합집합 | 0 ~ 1 | 집합 기반 | 추천, 집합 비교 |
+
+---
+
+### 7-2. CUDA를 이용한 유사도 연산
+
+**배치 코사인 유사도 (대규모 벡터 검색)**
+
+```python
+import torch
+
+# GPU에서 대규모 배치 유사도 계산
+# query: 검색 벡터 (1개), candidates: DB 벡터들 (100만 개)
+query = torch.randn(1, 512).cuda()           # 512차원 벡터
+candidates = torch.randn(1_000_000, 512).cuda()
+
+# L2 정규화 후 내적 = 코사인 유사도
+query_norm = F.normalize(query, p=2, dim=1)
+cand_norm = F.normalize(candidates, p=2, dim=1)
+
+# 행렬 곱으로 한번에 100만 개 유사도 계산
+# CUDA의 병렬 처리로 수 ms 안에 완료
+similarities = torch.mm(query_norm, cand_norm.T)  # [1, 1000000]
+top_k = torch.topk(similarities, k=10)
+```
+
+**CUDA 내부 연산 흐름**
+```
+CPU: 쿼리 벡터, DB 벡터 준비
+  ↓ PCIe 전송 (CPU → GPU 메모리)
+GPU:
+  1. 정규화 커널: 각 벡터를 단위 벡터로 변환
+  2. GEMM 커널 (TensorCore 사용):
+     [1 × 512] × [512 × 1,000,000] = [1 × 1,000,000]
+     → TensorCore가 행렬 곱을 수천 개 병렬 계산
+  3. Top-K 커널: 가장 높은 유사도 K개 선택
+  ↓ PCIe 전송 (GPU → CPU)
+CPU: 결과 수신
+```
+
+**FAISS (Facebook AI Similarity Search)**
+
+대규모 벡터 검색 라이브러리. CUDA로 GPU 가속됩니다.
+
+```python
+import faiss
+import numpy as np
+
+d = 512       # 벡터 차원
+n = 1_000_000 # DB 벡터 수
+
+# GPU 인덱스 생성 (내적 기반, 정규화 후 = 코사인 유사도)
+res = faiss.StandardGpuResources()
+index = faiss.index_factory(d, "Flat", faiss.METRIC_INNER_PRODUCT)
+index = faiss.index_cpu_to_gpu(res, 0, index)
+
+# 벡터 추가
+vectors = np.random.randn(n, d).astype('float32')
+faiss.normalize_L2(vectors)  # 코사인 유사도를 위해 정규화
+index.add(vectors)
+
+# 검색 (코사인 유사도 기반 Top-10)
+query = np.random.randn(1, d).astype('float32')
+faiss.normalize_L2(query)
+distances, indices = index.search(query, 10)
+# 100만 벡터 검색: GPU에서 ~수 ms
+```
+
+---
+
+### 7-3. ANN (Approximate Nearest Neighbor, 근사 최근접 이웃)
+
+> 주의: 여기서의 ANN은 '인공 신경망'이 아니라 '근사 최근접 이웃 검색'을 의미합니다.
+
+**정확한 검색 vs 근사 검색**
+```
+정확한 검색 (Exact Search):
+  100만 벡터 전부와 유사도 계산
+  → 정확하지만 느림 (O(n) 시간 복잡도)
+
+근사 검색 (ANN):
+  인덱스 구조로 빠르게 후보 좁힘
+  → 99% 정확도로 100배 빠름
+  → 대규모 실서비스에 필수
+```
+
+**ANN 알고리즘 비교**
+
+| 알고리즘 | 라이브러리 | 인덱스 구조 | 특징 |
+|---------|---------|-----------|------|
+| HNSW | hnswlib, FAISS | 계층적 그래프 | 속도와 정확도 균형 최고 |
+| IVF | FAISS | 클러스터 기반 | GPU 가속 최적 |
+| LSH | 여러 구현체 | 해시 기반 | 이론적으로 단순 |
+| ScaNN | Google | 양자화 + 파티션 | 대규모 추천 시스템 |
+| Annoy | Spotify | 이진 트리 | 메모리 효율 |
+
+---
+
+## 8. PyTorch 최적화 기술
+
+### 8-1. torch.compile
 
 **무엇인가?**
 PyTorch 2.0에서 추가된 기능. Python 코드를 분석하여 자동으로 최적화된 GPU 커널로 변환.
@@ -748,44 +1046,19 @@ torch.compile(model, backend="inductor", mode="max-autotune")
 # max-autotune: 최대 최적화 탐색 (컴파일 수 분 소요, A100+ 권장)
 ```
 
----
+**torch.compile 내부 컴파일 단계 비교**
 
-### 6-2. Triton
-
-**무엇인가?**
-OpenAI가 개발한 GPU 프로그래밍 언어/컴파일러. CUDA보다 훨씬 쉽게 고성능 GPU 커널 작성 가능.
-
-**CUDA vs Triton 비교**
-```python
-# CUDA C++ (저수준, 복잡)
-__global__ void add_kernel(float* a, float* b, float* c, int n) {
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (idx < n) c[idx] = a[idx] + b[idx];
-}
-// 스레드 관리, 메모리 레이아웃 직접 제어해야 함
-
-# Triton Python (고수준, 간결)
-@triton.jit
-def add_kernel(a_ptr, b_ptr, c_ptr, n, BLOCK_SIZE: tl.constexpr):
-    pid = tl.program_id(0)
-    offsets = pid * BLOCK_SIZE + tl.arange(0, BLOCK_SIZE)
-    a = tl.load(a_ptr + offsets)
-    b = tl.load(b_ptr + offsets)
-    tl.store(c_ptr + offsets, a + b)
-# 타일 단위 추상화, Python 문법 사용
-```
-
-**Triton이 torch.compile에 포함된 이유**
-```
-연구자: "새 모델 구조 만들 때마다 CUDA 커널 직접 짜기 힘들어"
-OpenAI: "Triton으로 자동 생성하면 되잖아"
-PyTorch: "torch.compile 백엔드(inductor)로 Triton 채택"
-→ 개발자가 CUDA 몰라도 자동으로 최적 GPU 커널 생성
-```
+| 단계 | 역할 | 출력 |
+|------|------|------|
+| Dynamo | Python 코드 → FX 그래프 | 연산 그래프 (Python) |
+| AOTAutograd | 자동 미분 처리 | Forward/Backward 그래프 |
+| Inductor | 그래프 최적화 + 코드 생성 | Triton/C++ 커널 코드 |
+| Triton JIT | Triton → PTX | GPU 어셈블리 |
+| NVCC | PTX → SASS | 실제 GPU 바이너리 |
 
 ---
 
-### 6-3. 커널 퓨전 (Kernel Fusion)
+### 8-2. 커널 퓨전 (Kernel Fusion)
 
 **문제 상황**
 ```
@@ -811,7 +1084,7 @@ GPU 메모리 읽기/쓰기가 1번으로 감소
 
 ---
 
-### 6-4. FP32 / FP16 / BF16
+### 8-3. FP32 / FP16 / BF16
 
 **수 표현 방식**
 
@@ -835,20 +1108,21 @@ BF16 (bfloat16, Brain Float 16):
   → A100/H100 에서 학습에 권장 (범위 넓어 안전)
 ```
 
-**T4에서 FP16이 4배 빠른 이유**
-```
-TensorCore (T4 기준):
-  FP32 행렬곱: 초당 65 TFLOPS
-  FP16 행렬곱: 초당 130 TFLOPS (2배)
+**정밀도 형식 비교**
 
-추가로:
-  FP16은 메모리 절반 사용 → 메모리 대역폭 병목도 절반
-  합산 효과 → 실측 ~4배 향상
-```
+| 형식 | 비트 수 | 숫자 범위 | 메모리 | 속도(T4 기준) | 주 용도 |
+|------|--------|---------|--------|-------------|--------|
+| FP64 | 64 | 매우 넓음 | 4배 | 0.25× | 과학 계산 |
+| FP32 | 32 | 넓음 | 기준 | 1× | 학습 기본값 |
+| TF32 | 19 | FP32와 같음 | 기준 | 10× | A100 학습 |
+| BF16 | 16 | FP32와 같음 | 0.5× | 8× | A100+ 학습 |
+| FP16 | 16 | 좁음 | 0.5× | 8× | T4 추론 |
+| INT8 | 8 | 정수만 | 0.25× | 16× | 추론 전용 |
+| FP8 | 8 | 좁음 | 0.25× | 32× | H100 학습/추론 |
 
 ---
 
-### 6-5. AMP (Automatic Mixed Precision)
+### 8-4. AMP (Automatic Mixed Precision)
 
 **무엇인가?**
 학습/추론 시 연산에 따라 FP32와 FP16을 자동으로 선택해주는 기능.
@@ -881,19 +1155,354 @@ scaler.step(optimizer)
 scaler.update()
 ```
 
-**순수 FP16 vs AMP**
+---
 
-| | 순수 FP16 | AMP |
-|--|---------|-----|
-| 속도 | 더 빠름 | 약간 느림 (형변환 오버헤드) |
-| 안정성 | gradient 소실 위험 | 자동 보호 |
-| 용도 | 추론 전용 | 학습 + 추론 |
+## 9. CUDA와 Triton — 유사성·연관성·차이점 완전 정리
+
+### 9-1. CUDA란 무엇인가?
+
+**CUDA (Compute Unified Device Architecture)**
+
+NVIDIA가 2006년에 발표한 GPU 병렬 컴퓨팅 플랫폼 및 프로그래밍 모델입니다. C/C++ 언어를 확장하여 GPU에서 실행되는 코드(커널)를 작성할 수 있게 합니다.
+
+**CUDA의 핵심 개념**
+```
+스레드 (Thread):
+  → GPU의 가장 작은 실행 단위
+  → 수십만 개가 동시에 실행
+
+워프 (Warp):
+  → 32개 스레드의 묶음
+  → 항상 같은 명령어를 동시에 실행 (SIMT 방식)
+
+블록 (Block):
+  → 워프들의 집합 (최대 1024 스레드)
+  → 같은 SM(Streaming Multiprocessor)에서 실행
+  → 공유 메모리(Shared Memory) 사용 가능
+
+그리드 (Grid):
+  → 블록들의 집합
+  → 하나의 커널 실행 = 하나의 그리드
+```
+
+**CUDA 커널 예시 (벡터 덧셈)**
+```c
+// C++로 작성된 GPU 커널
+__global__ void vector_add(float* a, float* b, float* c, int n) {
+    // 이 스레드가 처리할 인덱스 계산
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < n) {
+        c[idx] = a[idx] + b[idx];  // 병렬로 수행
+    }
+}
+
+// CPU에서 커널 호출
+int threads_per_block = 256;
+int blocks = (n + threads_per_block - 1) / threads_per_block;
+vector_add<<<blocks, threads_per_block>>>(a, b, c, n);
+```
 
 ---
 
-## 7. GPU 하드웨어 개념
+### 9-2. Triton이란 무엇인가?
 
-### 7-1. SM (Streaming Multiprocessor)
+**Triton**
+
+OpenAI가 2021년에 공개한 GPU 프로그래밍 언어 및 컴파일러입니다. Python 문법으로 고성능 GPU 커널을 작성할 수 있으며, CUDA보다 훨씬 낮은 진입 장벽으로 동등하거나 더 높은 성능을 제공합니다.
+
+**Triton 커널 예시 (벡터 덧셈)**
+```python
+import triton
+import triton.language as tl
+
+@triton.jit
+def vector_add_kernel(a_ptr, b_ptr, c_ptr, n, BLOCK_SIZE: tl.constexpr):
+    # 이 프로그램 인스턴스가 처리할 블록 ID
+    pid = tl.program_id(axis=0)
+    # 이 블록이 처리할 인덱스 범위
+    offsets = pid * BLOCK_SIZE + tl.arange(0, BLOCK_SIZE)
+    mask = offsets < n  # 경계 체크
+    # 메모리에서 데이터 로드
+    a = tl.load(a_ptr + offsets, mask=mask)
+    b = tl.load(b_ptr + offsets, mask=mask)
+    # 계산 후 저장
+    tl.store(c_ptr + offsets, a + b, mask=mask)
+
+# 호출
+grid = (triton.cdiv(n, BLOCK_SIZE),)
+vector_add_kernel[grid](a, b, c, n, BLOCK_SIZE=1024)
+```
+
+---
+
+### 9-3. CUDA와 Triton의 유사성
+
+두 기술은 근본적으로 같은 목적을 위해 존재하며, 내부적으로 깊이 연결되어 있습니다.
+
+**공통 목표와 개념**
+
+| 개념 | CUDA 용어 | Triton 용어 | 설명 |
+|------|----------|-----------|------|
+| 최소 실행 단위 | Thread | 스칼라 연산 | 하나의 연산 |
+| 병렬 단위 | Thread Block | Program Instance | 독립적으로 실행되는 단위 |
+| 데이터 묶음 | Warp(32) | Block(사용자 지정) | 동시에 처리하는 데이터 수 |
+| 빠른 임시 저장 | Shared Memory | 자동 관리 | GPU 내 고속 메모리 |
+| 전역 저장 | Global Memory | Pointer + Offset | GPU VRAM |
+| 실행 구성 | <<<grid, block>>> | [grid](args) | 병렬 실행 설정 |
+
+**기술적 연결 관계**
+```
+Triton 코드
+  → Triton 컴파일러
+  → LLVM IR (중간 표현)
+  → PTX (NVIDIA GPU 어셈블리)
+  → SASS (실제 GPU 머신코드)
+       ↑
+  CUDA도 동일한 PTX → SASS 경로 사용
+```
+
+즉, Triton으로 작성한 커널은 최종적으로 CUDA와 동일한 PTX/SASS 형태로 GPU에서 실행됩니다. Triton은 CUDA 위에 구축된 고수준 추상화 계층입니다.
+
+---
+
+### 9-4. CUDA와 Triton의 차이점
+
+**추상화 수준 차이**
+```
+CUDA: 스레드 수준 추상화
+  → 개발자가 스레드, 워프, 블록을 모두 직접 관리
+  → 공유 메모리 사용, 동기화, 메모리 접근 패턴을 수동 최적화
+
+Triton: 블록(타일) 수준 추상화
+  → 개발자는 "BLOCK_SIZE 단위로 처리한다"만 지정
+  → 워프 내 동기화, 공유 메모리 관리는 컴파일러가 자동 처리
+```
+
+**구체적 비교**
+
+| 항목 | CUDA | Triton |
+|------|------|--------|
+| 프로그래밍 언어 | C/C++ 확장 | Python |
+| 학습 난이도 | 높음 (수개월~수년) | 낮음 (수일~수주) |
+| 스레드 관리 | 직접 (threadIdx, blockIdx) | 자동 (컴파일러 처리) |
+| 공유 메모리 | 직접 선언 및 관리 | 자동 관리 |
+| 메모리 접근 패턴 | 수동 최적화 필수 | 컴파일러가 최적화 |
+| 디버깅 | cuda-gdb, Nsight | Python 디버거 사용 가능 |
+| 성능 상한 | 이론적 최대 | CUDA 대비 ~90~100% |
+| 유연성 | 매우 높음 | 높음 (일부 제한) |
+| 코드 길이 | 길고 복잡 | 짧고 간결 |
+| NVIDIA 의존성 | 완전 의존 | 의존 (CUDA 런타임 필요) |
+| AMD GPU 지원 | 없음 (CUDA 전용) | 실험적 지원 (ROCm) |
+
+---
+
+### 9-5. torch.compile에서 CUDA와 Triton의 역할
+
+`torch.compile`의 기본 백엔드인 `inductor`가 자동으로 Triton 커널을 생성하는 과정:
+
+```
+PyTorch 모델 (Python)
+      ↓
+  [Dynamo]
+  Python 코드 분석, FX 그래프 생성
+      ↓
+  [Inductor 최적화]
+  - 연산 퓨전 (kernel fusion)
+  - 메모리 레이아웃 최적화
+  - 루프 언롤링, 타일링 결정
+      ↓
+  [Triton 코드 생성]
+  → 자동으로 최적화된 Triton 커널 코드 생성
+  → 개발자가 직접 작성한 것과 유사한 품질
+      ↓
+  [Triton JIT 컴파일]
+  → PTX → SASS → GPU 실행
+```
+
+**torch.compile이 생성한 Triton 코드 확인**
+```python
+import torch
+
+model = torch.nn.Linear(512, 512).cuda()
+compiled = torch.compile(model)
+
+# 생성된 Triton 코드 출력 (디버깅용)
+import torch._inductor.config as config
+config.trace.enabled = True
+
+with torch.no_grad():
+    x = torch.randn(64, 512).cuda()
+    y = compiled(x)
+# → logs/ 폴더에 생성된 Triton 커널 코드 저장됨
+```
+
+---
+
+### 9-6. Triton이 CUDA보다 효과적인 경우
+
+#### 케이스 1: 새로운 연산자/레이어 개발
+
+새로운 활성화 함수, 어텐션 변형, 정규화 방법을 연구할 때, CUDA로 커스텀 커널을 짜는 데 수 주가 걸리는 작업을 Triton으로 하루 만에 구현할 수 있습니다.
+
+```python
+# 커스텀 Flash Attention 구현 예시
+@triton.jit
+def flash_attention_kernel(
+    q_ptr, k_ptr, v_ptr, out_ptr,
+    seq_len, head_dim,
+    BLOCK_M: tl.constexpr, BLOCK_N: tl.constexpr
+):
+    # 블록 단위로 Q, K, V 처리
+    # → VRAM과 SRAM(공유 메모리) 사이 데이터 이동 최소화
+    # → 메모리 대역폭 병목 해결
+    ...
+```
+
+Flash Attention은 Triton으로 구현되어 표준 Attention 대비 메모리 사용량 10배 절감, 속도 3~5배 향상을 달성했습니다.
+
+#### 케이스 2: 메모리 병목(Memory-Bound) 연산
+
+GPU 연산이 계산 속도가 아닌 메모리 읽기/쓰기 속도에 의해 제한될 때, Triton의 자동 타일링이 효과적입니다.
+
+```
+메모리 병목 연산 예시:
+  - Element-wise 연산 (ReLU, GELU, Sigmoid)
+  - 정규화 (LayerNorm, BatchNorm)
+  - Dropout
+  - Embedding 조회
+
+→ 이런 연산들은 계산보다 데이터 이동이 병목
+→ Triton으로 여러 연산을 하나로 퓨전하면 메모리 접근 횟수 감소
+→ 수 배 성능 향상 가능
+```
+
+**Triton 퓨전 효과 측정 예시**
+```python
+# 기본 PyTorch (별도 커널 3회 실행)
+def naive_gelu_norm(x, weight, bias):
+    x = F.gelu(x)           # 커널 1
+    x = F.layer_norm(x, ...)  # 커널 2
+    x = x * weight + bias    # 커널 3
+    return x
+
+# Triton 퓨전 커널 (커널 1회)
+@triton.jit
+def fused_gelu_norm_kernel(...):
+    # GELU + LayerNorm + Scale/Shift를 하나의 커널에서 처리
+    # → 중간 결과를 VRAM에 저장/읽기 없이 레지스터에서 처리
+    ...
+
+# 성능 차이: 메모리 대역폭 3배 절약 → 속도 2~3배 향상
+```
+
+#### 케이스 3: 희소 연산 (Sparse Operations)
+
+행렬이 대부분 0으로 채워진 희소 행렬을 다룰 때, CUDA의 cuSPARSE보다 Triton으로 커스텀 구현이 더 유리한 경우가 있습니다.
+
+```python
+# 희소 어텐션 마스크 적용 예시
+# 특정 패턴(대각선, 블록 등)만 계산하고 나머지 무시
+@triton.jit
+def sparse_attention_kernel(
+    q_ptr, k_ptr, mask_ptr, out_ptr,
+    ...
+):
+    # 마스크가 1인 위치만 계산 → 불필요한 연산 건너뜀
+    # CUDA cuSPARSE: 범용 희소 연산, 패턴 최적화 어려움
+    # Triton: 특정 패턴에 맞춘 최적화 가능
+    ...
+```
+
+#### 케이스 4: 연구 프로토타이핑
+
+```
+연구자 workflow:
+  새 아이디어 → 빠른 구현 → 성능 검증 → 논문 발표
+
+CUDA 방식:
+  아이디어 (1일) → CUDA 커널 구현 (2~4주) → 검증 → 발표
+  → 구현 비용이 너무 커서 아이디어 탐색 제한
+
+Triton 방식:
+  아이디어 (1일) → Triton 커널 구현 (1~3일) → 검증 → 발표
+  → 더 많은 아이디어를 빠르게 탐색 가능
+
+실제 사례:
+  - FlashAttention (Triton 구현)
+  - Mamba (SSM 커널, Triton으로 프로토타입)
+  - SparseGPT (가지치기 커널)
+```
+
+#### 케이스 5: torch.compile 자동 최적화
+
+기존 PyTorch 코드에 `torch.compile` 한 줄 추가만으로 Triton 커널의 이점을 누릴 수 있습니다.
+
+```python
+# 변경 없이 Triton 최적화 적용
+model = MyTransformerModel().cuda()
+model = torch.compile(model)  # 이것만 추가
+# → Inductor가 자동으로 최적 Triton 커널 생성
+# → 일반적으로 1.5~3× 속도 향상
+```
+
+---
+
+### 9-7. Triton이 CUDA보다 불리한 경우
+
+균형 잡힌 이해를 위해 Triton의 한계도 알아야 합니다.
+
+| 상황 | 이유 | 권장 |
+|------|------|------|
+| 최극단 최적화 필요 | CUDA는 워프 수준까지 제어 가능 | CUDA 직접 작성 |
+| 비정형 메모리 접근 | Triton은 규칙적인 타일 패턴에 최적화 | CUDA |
+| cuDNN, cuBLAS 사용 | 이미 극도로 최적화된 라이브러리 존재 | 기존 라이브러리 |
+| NVIDIA 전용 기능 (NVLink 등) | CUDA만 완전 지원 | CUDA |
+| 디버깅 복잡한 버그 | CUDA는 성숙한 디버깅 툴 (Nsight) | CUDA |
+
+---
+
+### 9-8. CUDA vs Triton 선택 가이드
+
+```
+새 GPU 연산 구현이 필요한가?
+  ├─ Yes → 연산이 메모리 병목인가?
+  │          ├─ Yes → Triton 선택 (퓨전 효과 극대화)
+  │          └─ No → 계산 병목
+  │                    ├─ 행렬 곱 등 표준 연산 → cuBLAS/cuDNN 사용
+  │                    └─ 커스텀 계산 → CUDA 또는 Triton
+  └─ No → 기존 PyTorch 연산만 사용
+            → torch.compile 추가 (자동 Triton 최적화)
+
+연구/프로토타입인가?
+  → Triton (빠른 개발)
+
+프로덕션 최적화인가?
+  → CUDA (세밀한 제어) 또는 Triton (충분한 경우 많음)
+
+GPU가 NVIDIA가 아닌가?
+  → OpenCL, Metal (Apple), ROCm (AMD) 고려
+  → Triton의 AMD 지원은 실험적 수준
+```
+
+---
+
+### 9-9. 실제 성능 비교 데이터 (A100 GPU 기준)
+
+| 연산 | PyTorch Eager | torch.compile (Triton) | 수작업 CUDA | Triton 수작업 |
+|------|-------------|----------------------|------------|-------------|
+| GELU + LayerNorm 퓨전 | 기준 (1×) | 2.1× | 2.5× | 2.3× |
+| Flash Attention | 기준 (1×) | 1.8× | - | 3.2× (FlashAttn2) |
+| Softmax | 기준 (1×) | 1.5× | 1.6× | 1.5× |
+| Linear (행렬곱) | 기준 (1×) | 1.0× | cuBLAS 동등 | cuBLAS 수준 |
+| RMS Norm | 기준 (1×) | 1.9× | 2.1× | 2.0× |
+
+> 행렬 곱(GEMM) 같은 계산 집약적 연산은 cuBLAS가 이미 극도로 최적화되어 있어 Triton이 추가 이득을 주기 어렵습니다. 반면 메모리 병목 연산에서 Triton의 퓨전이 큰 효과를 냅니다.
+
+---
+
+## 10. GPU 하드웨어 개념
+
+### 10-1. SM (Streaming Multiprocessor)
 
 **무엇인가?**
 GPU의 기본 연산 단위. CPU의 "코어"에 해당.
@@ -929,7 +1538,7 @@ T4: 40개 → 임계값 미달 → 탐색 포기 → 기본값 사용
 
 ---
 
-### 7-2. TensorCore
+### 10-2. TensorCore
 
 **무엇인가?**
 행렬 곱셈(GEMM)을 전용으로 처리하는 하드웨어 가속 유닛. AI 연산을 위해 설계.
@@ -942,9 +1551,9 @@ TensorCore (T4 기준):
   4×4 FP16 행렬 곱 = 64개 연산 / cycle
   → 같은 시간에 64배 더 많은 연산
 
-수식: D = A × B + C
+연산 설명: D = A × B + C
   A, B, C: 4×4 행렬
-  cycle당 처리: 4×4×4 = 64 FMA(곱합) 연산
+  cycle당 처리: 4×4×4 = 64 곱합(FMA) 연산
 ```
 
 **세대별 발전**
@@ -958,7 +1567,7 @@ TensorCore (T4 기준):
 
 ---
 
-### 7-3. VRAM vs RAM
+### 10-3. VRAM vs RAM
 
 ```
 RAM (시스템 메모리):
@@ -991,7 +1600,7 @@ model = model.half()
 # 4. 사용 완료 후 즉시 삭제
 del model, optimizer
 torch.cuda.empty_cache()
-gc.collect()
+import gc; gc.collect()
 
 # 5. Gradient Checkpointing (학습 시)
 model.gradient_checkpointing_enable()
@@ -1000,9 +1609,9 @@ model.gradient_checkpointing_enable()
 
 ---
 
-## 8. 데이터 포맷 및 파일 형식
+## 11. 데이터 포맷 및 파일 형식
 
-### 8-1. nbformat (Jupyter Notebook 형식)
+### 11-1. nbformat (Jupyter Notebook 형식)
 
 **구조**
 ```json
@@ -1011,9 +1620,9 @@ model.gradient_checkpointing_enable()
   "nbformat_minor": 5,
   "cells": [
     {
-      "id": "a1b2c3d4",           ← nbformat 4.5부터 필수
+      "id": "a1b2c3d4",
       "cell_type": "code",
-      "execution_count": null,   ← code 셀 필수
+      "execution_count": null,
       "source": "print('hello')",
       "outputs": []
     }
@@ -1037,7 +1646,7 @@ nbformat v5.10.4가 노트북을 렌더링할 때 검증 실행
 
 ---
 
-### 8-2. YAML (config.yaml)
+### 11-2. YAML (config.yaml)
 
 **무엇인가?**
 "YAML Ain't Markup Language" — 사람이 읽기 쉬운 설정 파일 형식.
@@ -1052,59 +1661,44 @@ gcp:
 bigquery:
   dataset_id: media_ai_lab
   location: asia-northeast3
-
-labs:
-  lab01:
-    features:
-      - SHOT_CHANGE_DETECTION
-      - LABEL_DETECTION
-      - OBJECT_TRACKING
 ```
 
-**JSON vs YAML**
-```
-JSON: 기계가 파싱하기 쉬움, 주석 불가
-YAML: 사람이 읽기 쉬움, 주석 가능 (#), 파일 더 짧음
-TOML: YAML과 유사하지만 더 엄격한 문법 (Rust 생태계 선호)
-```
+**설정 파일 형식 비교**
+
+| 형식 | 가독성 | 주석 | 타입 지원 | 주 사용처 |
+|------|--------|------|---------|---------|
+| JSON | 보통 | 불가 | 제한적 | API 응답, 설정 |
+| YAML | 높음 | 가능 (#) | 풍부 | 설정 파일, CI/CD |
+| TOML | 높음 | 가능 (#) | 명시적 | Rust 프로젝트, pyproject |
+| INI | 높음 | 가능 (;) | 문자열 중심 | 구형 설정 |
+| XML | 낮음 | 가능 | 명시적 | 엔터프라이즈, SOAP |
 
 ---
 
-## 9. Python 생태계 도구
+## 12. Python 생태계 도구
 
-### 9-1. yt-dlp
+### 12-1. yt-dlp
 
 **무엇인가?**
 YouTube, Vimeo, Bilibili 등 1000개 이상 사이트에서 영상을 다운로드하는 Python 라이브러리.
-
-**원래 youtube-dl에서 파생된 프로젝트** — 더 빠르고 많은 기능.
 
 ```python
 import yt_dlp
 
 ydl_opts = {
     "format": "bestvideo[height<=720]+bestaudio/best",
-    # 720p 이하 최고화질 영상 + 최고화질 음성 합성
-    "merge_output_format": "mp4",  # 결과를 MP4로 저장
-    "outtmpl": "/tmp/%(id)s_%(title)s.%(ext)s",  # 파일명 형식
-    "quiet": True,  # 진행 출력 숨김
+    "merge_output_format": "mp4",
+    "outtmpl": "/tmp/%(id)s_%(title)s.%(ext)s",
+    "quiet": True,
 }
 
 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
     info = ydl.extract_info(url, download=True)
-    filename = ydl.prepare_filename(info)
-```
-
-**format 문자열 의미**
-```
-bestvideo[height<=720]: 720p 이하 최고화질 영상 스트림
-+bestaudio:             + 최고화질 음성 스트림 (별도 파일)
-/best:                  위가 안 되면 합쳐진 최고화질
 ```
 
 ---
 
-### 9-2. python-dotenv
+### 12-2. python-dotenv
 
 **무엇인가?**
 `.env` 파일에서 환경변수를 읽어 Python에 로드하는 라이브러리.
@@ -1119,26 +1713,13 @@ BUCKET_NAME=my-media-bucket
 from dotenv import load_dotenv
 import os
 
-load_dotenv()  # .env 파일 로드
-
+load_dotenv()
 project_id = os.environ.get("GCP_PROJECT_ID")
-```
-
-**왜 환경변수에 저장하는가?**
-```
-하드코딩 (나쁜 방법):
-  project_id = "gen-lang-client-0318067486"
-  → Git에 올리면 누구나 볼 수 있음
-  → 실제 비밀 키(API key)라면 보안 사고
-
-환경변수 (.env):
-  → .gitignore에 추가 → Git에 올라가지 않음
-  → 팀원마다 다른 값 사용 가능
 ```
 
 ---
 
-### 9-3. tqdm
+### 12-3. tqdm
 
 **무엇인가?**
 "taqaddum" (아랍어: 진행) — Python 루프에 프로그레스 바를 추가하는 라이브러리.
@@ -1146,42 +1727,26 @@ project_id = os.environ.get("GCP_PROJECT_ID")
 ```python
 from tqdm import tqdm
 
-# 없을 때
-for item in large_list:
-    process(item)  # 얼마나 걸릴지 모름
-
-# tqdm 사용
 for item in tqdm(large_list, desc="처리 중"):
     process(item)
-# 처리 중: 73%|████████████████████░░░░░░░| 730/1000 [01:12<00:27, 9.99it/s]
+# 처리 중: 73%|████████████████████░░░░░░| 730/1000 [01:12<00:27, 9.99it/s]
 ```
 
 ---
 
-### 9-4. 주요 GCP Python 클라이언트 라이브러리
+### 12-4. 주요 GCP Python 클라이언트 라이브러리
 
 ```python
-# Video Intelligence
 from google.cloud import videointelligence
-
-# Speech-to-Text
 from google.cloud import speech
-
-# Translation
 from google.cloud import translate_v3
-
-# Cloud Storage
 from google.cloud import storage
-
-# BigQuery
 from google.cloud import bigquery
-
-# Vertex AI (Gemini)
 import vertexai
 from vertexai.generative_models import GenerativeModel
 ```
 
-**모두 공통 패턴**
+**공통 패턴**
 ```python
 # 1. 클라이언트 생성 (인증 포함)
 client = storage.Client(project=project_id)
@@ -1198,35 +1763,56 @@ blob.upload_from_filename("/local/file.mp4")
 
 ## 빠른 참조 카드
 
-### 수식 모음
+### 핵심 연산 설명 모음
 
-| 이름 | 수식 | 용도 |
-|------|------|------|
-| 암시적 평점 | `rate×3 + liked×2 + shared×1` | 시청 행동 → 숫자 변환 |
-| 코사인 유사도 | `A·B / (|A|×|B|)` | 사용자 취향 유사도 |
-| 가중 추천 점수 | `Σ(rating×sim) / Σ(sim)` | 유사 사용자 의견 통합 |
-| Attention | `softmax(QK^T/√d) × V` | 시퀀스 내 관계 포착 |
-| LayerNorm | `γ(x-μ)/σ + β` | 출력 분포 안정화 |
+| 이름 | 계산 방법 (말로) | 용도 |
+|------|----------------|------|
+| 암시적 평점 | 시청률×3 + 좋아요×2 + 공유×1 | 시청 행동 → 숫자 변환 |
+| 코사인 유사도 | 내적 나누기 (A크기 × B크기) | 사용자 취향 유사도 |
+| 가중 추천 점수 | (평점×유사도의 합) 나누기 (유사도의 합) | 유사 사용자 의견 통합 |
+| Attention | 소프트맥스(QK전치 나누기 루트dk) 곱하기 V | 시퀀스 내 관계 포착 |
+| LayerNorm | (x 빼기 평균) 나누기 표준편차 × 감마 더하기 베타 | 출력 분포 안정화 |
+
+### GPU 선택 가이드
+
+```
+학습 필요 없는 추론만:       T4 + FP16  (비용 효율)
+중소규모 모델 학습:          A10G + BF16 (균형)
+LLM 학습 (7B 이상):         A100/H100 + BF16 + torch.compile
+torch.compile 효과 측정:    A100 이상 필수 (SM 80개+)
+커스텀 GPU 커널 개발:        Triton 우선 시도 → 성능 부족 시 CUDA
+```
 
 ### 단위 변환
 
 ```
 1 GHz = 10억 Hz = 초당 10억 번 연산
 1 TFLOPS = 초당 1조 번 부동소수점 연산
-1 GB = 1,073,741,824 bytes ≈ 10억 bytes
+1 GB = 약 10억 bytes
 FP32 파라미터 1개 = 4 bytes
 FP16 파라미터 1개 = 2 bytes
 1억 파라미터 FP32 모델 = 400 MB VRAM
 1억 파라미터 FP16 모델 = 200 MB VRAM
 ```
 
-### GPU 선택 가이드
+### 신경망 구조 선택 가이드
 
 ```
-학습 필요 없는 추론만:      T4 + FP16  (비용 효율)
-중소규모 모델 학습:         A10G + BF16 (균형)
-LLM 학습 (7B 이상):        A100/H100 + BF16 + torch.compile
-torch.compile 효과 측정:   A100 이상 필수 (SM 80개+)
+이미지/영상 분류·감지:       CNN (ResNet, EfficientNet)
+텍스트 이해/생성:            Transformer (BERT, GPT)
+시계열 예측:                 LSTM/GRU 또는 Transformer
+음성 인식:                   Transformer (Whisper)
+추천 시스템:                 ANN(MLP) + 임베딩 또는 협업 필터링
+```
+
+### 유사도 방법 선택 가이드
+
+```
+텍스트/문서 유사도:                코사인 유사도
+위치/좌표 거리:                    유클리드 거리
+대규모 벡터 검색 (100만 개 이상):  FAISS + ANN (HNSW/IVF)
+집합 비교 (태그, 키워드):           Jaccard 유사도
+이진 데이터 (해시):                해밍 거리
 ```
 
 ---
