@@ -398,8 +398,8 @@ def train_recommendation_model(
         video_id,
         (
             completion_rate * 3.0
-            + CAST(liked    AS FLOAT64) * 2.0
-            + CAST(shared   AS FLOAT64) * 1.0
+            + IF(liked,  2.0, 0.0)
+            + IF(shared, 1.0, 0.0)
         ) AS implicit_rating
     FROM `{project_id}.{dataset_id}.watch_history`
     WHERE completion_rate > 0.1
