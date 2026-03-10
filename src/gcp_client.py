@@ -122,9 +122,14 @@ def get_video_intelligence_client():
         videointelligence.VideoIntelligenceServiceClient 인스턴스
     """
     from google.cloud import videointelligence
+    from google.api_core.gapic_v1.client_info import ClientInfo
 
-    client = videointelligence.VideoIntelligenceServiceClient()
-    logger.debug("Video Intelligence 클라이언트 초기화 완료")
+    project_id = get_project_id()
+    client_options = {"quota_project_id": project_id}
+    client = videointelligence.VideoIntelligenceServiceClient(
+        client_options=client_options
+    )
+    logger.debug(f"Video Intelligence 클라이언트 초기화 완료 (프로젝트: {project_id})")
     return client
 
 
@@ -137,8 +142,10 @@ def get_speech_client():
     """
     from google.cloud import speech
 
-    client = speech.SpeechClient()
-    logger.debug("Speech-to-Text 클라이언트 초기화 완료")
+    project_id = get_project_id()
+    client_options = {"quota_project_id": project_id}
+    client = speech.SpeechClient(client_options=client_options)
+    logger.debug(f"Speech-to-Text 클라이언트 초기화 완료 (프로젝트: {project_id})")
     return client
 
 
@@ -151,8 +158,10 @@ def get_translation_client():
     """
     from google.cloud import translate_v3 as translate
 
-    client = translate.TranslationServiceClient()
-    logger.debug("Translation 클라이언트 초기화 완료")
+    project_id = get_project_id()
+    client_options = {"quota_project_id": project_id}
+    client = translate.TranslationServiceClient(client_options=client_options)
+    logger.debug(f"Translation 클라이언트 초기화 완료 (프로젝트: {project_id})")
     return client
 
 
