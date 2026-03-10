@@ -1,0 +1,226 @@
+{
+  "video_uri": "gs://cloud-samples-data/video/animals.mp4",
+  "analysis_time": "2025-01-15T10:30:00.000000",
+  "elapsed_seconds": 45.2,
+  "features_analyzed": [
+    "SHOT_CHANGE_DETECTION",
+    "LABEL_DETECTION",
+    "OBJECT_TRACKING",
+    "TEXT_DETECTION"
+  ],
+  "shot_changes": [
+    {
+      "shot_index": 0,
+      "start_time": 0.0,
+      "end_time": 4.7,
+      "duration": 4.7
+    },
+    {
+      "shot_index": 1,
+      "start_time": 4.7,
+      "end_time": 9.2,
+      "duration": 4.5
+    },
+    {
+      "shot_index": 2,
+      "start_time": 9.2,
+      "end_time": 15.8,
+      "duration": 6.6
+    },
+    {
+      "shot_index": 3,
+      "start_time": 15.8,
+      "end_time": 22.1,
+      "duration": 6.3
+    },
+    {
+      "shot_index": 4,
+      "start_time": 22.1,
+      "end_time": 28.5,
+      "duration": 6.4
+    }
+  ],
+  "labels": [
+    {
+      "description": "animal",
+      "confidence": 0.9876,
+      "type": "segment_level",
+      "start_time": 0.0,
+      "end_time": 28.5
+    },
+    {
+      "description": "mammal",
+      "confidence": 0.9754,
+      "type": "segment_level",
+      "start_time": 0.0,
+      "end_time": 28.5
+    },
+    {
+      "description": "elephant",
+      "confidence": 0.9512,
+      "type": "shot_level",
+      "start_time": 0.0,
+      "end_time": 9.2
+    },
+    {
+      "description": "wildlife",
+      "confidence": 0.9345,
+      "type": "segment_level",
+      "start_time": 0.0,
+      "end_time": 28.5
+    },
+    {
+      "description": "nature",
+      "confidence": 0.9123,
+      "type": "segment_level",
+      "start_time": 0.0,
+      "end_time": 28.5
+    },
+    {
+      "description": "grass",
+      "confidence": 0.8876,
+      "type": "shot_level",
+      "start_time": 4.7,
+      "end_time": 15.8
+    },
+    {
+      "description": "savanna",
+      "confidence": 0.8654,
+      "type": "segment_level",
+      "start_time": 0.0,
+      "end_time": 28.5
+    },
+    {
+      "description": "giraffe",
+      "confidence": 0.8432,
+      "type": "shot_level",
+      "start_time": 9.2,
+      "end_time": 22.1
+    },
+    {
+      "description": "sky",
+      "confidence": 0.8210,
+      "type": "shot_level",
+      "start_time": 15.8,
+      "end_time": 28.5
+    },
+    {
+      "description": "tree",
+      "confidence": 0.7987,
+      "type": "shot_level",
+      "start_time": 0.0,
+      "end_time": 15.8
+    }
+  ],
+  "objects": [
+    {
+      "description": "elephant",
+      "confidence": 0.9512,
+      "track_id": 1,
+      "start_time": 0.0,
+      "end_time": 9.2,
+      "frames": [
+        {
+          "time": 0.5,
+          "bounding_box": {
+            "left": 0.1,
+            "top": 0.2,
+            "right": 0.6,
+            "bottom": 0.8
+          }
+        },
+        {
+          "time": 1.0,
+          "bounding_box": {
+            "left": 0.12,
+            "top": 0.19,
+            "right": 0.62,
+            "bottom": 0.79
+          }
+        },
+        {
+          "time": 1.5,
+          "bounding_box": {
+            "left": 0.15,
+            "top": 0.18,
+            "right": 0.65,
+            "bottom": 0.78
+          }
+        }
+      ],
+      "total_frames": 92
+    },
+    {
+      "description": "giraffe",
+      "confidence": 0.8432,
+      "track_id": 2,
+      "start_time": 9.2,
+      "end_time": 22.1,
+      "frames": [
+        {
+          "time": 9.5,
+          "bounding_box": {
+            "left": 0.3,
+            "top": 0.05,
+            "right": 0.7,
+            "bottom": 0.95
+          }
+        },
+        {
+          "time": 10.0,
+          "bounding_box": {
+            "left": 0.32,
+            "top": 0.04,
+            "right": 0.72,
+            "bottom": 0.94
+          }
+        }
+      ],
+      "total_frames": 128
+    }
+  ],
+  "texts": [
+    {
+      "text": "National Geographic",
+      "segments": [
+        {
+          "confidence": 0.9912,
+          "start_time": 0.0,
+          "end_time": 3.0,
+          "frames": [
+            {
+              "time": 0.5,
+              "bounding_box": [
+                {"x": 50, "y": 450},
+                {"x": 350, "y": 450},
+                {"x": 350, "y": 490},
+                {"x": 50, "y": 490}
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "text": "Wild Africa",
+      "segments": [
+        {
+          "confidence": 0.9756,
+          "start_time": 0.5,
+          "end_time": 5.0,
+          "frames": [
+            {
+              "time": 1.0,
+              "bounding_box": [
+                {"x": 150, "y": 400},
+                {"x": 450, "y": 400},
+                {"x": 450, "y": 440},
+                {"x": 150, "y": 440}
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,102 @@
+# GCP Media AI 실습 설정 예시 파일
+# 이 파일을 복사하여 config.yaml로 저장하고 실제 값으로 수정하세요.
+# cp setup/config.yaml.example setup/config.yaml
+
+gcp:
+  # GCP 프로젝트 ID (필수)
+  project_id: "YOUR_PROJECT_ID"
+  # 기본 리전 (서울: asia-northeast3)
+  region: "asia-northeast3"
+  # Cloud Storage 버킷 이름 (필수)
+  bucket_name: "YOUR_PROJECT_ID-mediaai-lab"
+
+# Video Intelligence API 설정
+video_intelligence:
+  # 감지할 기능 목록
+  features:
+    - SHOT_CHANGE_DETECTION    # 장면 전환 감지
+    - LABEL_DETECTION          # 레이블(물체, 장소 등) 감지
+    - OBJECT_TRACKING          # 객체 추적
+    - TEXT_DETECTION           # 텍스트 감지
+  # API 처리 위치 (asia-east1 권장)
+  location: "asia-east1"
+
+# Speech-to-Text API 설정
+speech:
+  # 음성 언어 코드 (한국어: ko-KR)
+  language_code: "ko-KR"
+  # 오디오 인코딩 방식
+  encoding: "LINEAR16"
+  # 샘플링 레이트 (Hz)
+  sample_rate_hertz: 16000
+  # 단어별 타임스탬프 포함 여부
+  enable_word_time_offsets: true
+  # 자동 구두점 추가 여부
+  enable_automatic_punctuation: true
+  # 화자 분리 여부
+  enable_speaker_diarization: false
+
+# Translation API 설정
+translation:
+  # 원본 언어
+  source_language: "ko"
+  # 번역 대상 언어 목록
+  target_languages:
+    - "en"    # 영어
+    - "ja"    # 일본어
+    - "zh-CN" # 중국어 간체
+    - "zh-TW" # 중국어 번체 (선택사항)
+
+# Vertex AI 설정
+vertex_ai:
+  # Vertex AI 처리 위치
+  location: "asia-northeast3"
+  # Gemini 모델 버전
+  gemini_model: "gemini-1.5-pro"
+  # Gemini 생성 파라미터
+  generation_config:
+    temperature: 0.7
+    max_output_tokens: 2048
+    top_p: 0.9
+
+# BigQuery 설정
+bigquery:
+  # BigQuery 데이터셋 ID
+  dataset_id: "media_ai_lab"
+  # 데이터셋 위치
+  location: "asia-northeast3"
+  # 테이블 이름
+  tables:
+    watch_history: "watch_history"
+    video_metadata: "video_metadata"
+    user_profiles: "user_profiles"
+    recommendations: "recommendations"
+
+# 하이라이트 추출 설정
+highlight_extraction:
+  # 하이라이트 클립 최소 길이 (초)
+  min_clip_duration: 3.0
+  # 하이라이트 클립 최대 길이 (초)
+  max_clip_duration: 30.0
+  # 감지할 최대 하이라이트 수
+  max_highlights: 5
+  # 장면 점수 임계값 (0.0 ~ 1.0)
+  score_threshold: 0.7
+
+# 로컬 파일 경로 설정
+local:
+  # 데이터 루트 디렉토리
+  data_dir: "data"
+  # 출력 파일 디렉토리
+  output_dir: "data/output"
+  # 샘플 영상 디렉토리
+  sample_videos_dir: "data/sample_videos"
+  # 샘플 오디오 디렉토리
+  sample_audio_dir: "data/sample_audio"
+
+# 로깅 설정
+logging:
+  # 로그 레벨 (DEBUG, INFO, WARNING, ERROR)
+  level: "INFO"
+  # 로그 파일 경로 (비어 있으면 콘솔 출력만)
+  file: ""

@@ -1,0 +1,53 @@
+# GCP Media AI 실습 프로젝트 Python 패키지
+
+# Google Cloud Core
+google-cloud-core==2.4.1
+google-auth==2.27.0
+google-auth-oauthlib==1.2.0
+
+# Video Intelligence API
+google-cloud-videointelligence==2.13.4
+
+# Speech-to-Text API
+google-cloud-speech==2.26.0
+
+# Translation API
+google-cloud-translate==3.15.3
+
+# Vertex AI (Gemini, Recommendation AI)
+google-cloud-aiplatform==1.47.0
+vertexai==1.47.0
+
+# BigQuery
+google-cloud-bigquery==3.17.2
+google-cloud-bigquery-storage==2.24.0
+pandas-gbq==0.22.0
+
+# Cloud Storage
+google-cloud-storage==2.16.0
+
+# Data processing
+pandas==2.2.1
+numpy==1.26.4
+pyarrow==15.0.0
+
+# Media processing
+moviepy==1.0.3
+ffmpeg-python==0.2.0
+Pillow==10.2.0
+
+# Audio processing
+pydub==0.25.1
+librosa==0.10.1
+
+# Utilities
+pyyaml==6.0.1
+python-dotenv==1.0.1
+tqdm==4.66.2
+click==8.1.7
+rich==13.7.1
+
+# Jupyter Notebook
+jupyter==1.0.0
+ipykernel==6.29.3
+ipywidgets==8.1.2

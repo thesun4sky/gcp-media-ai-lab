@@ -1,0 +1,36 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+.Python
+
+# GCP 인증 (절대 커밋 금지)
+setup/config.yaml
+*.json
+!labs/lab01_video_intelligence/sample_output.json
+service-account*.json
+application_default_credentials.json
+
+# 실험 결과
+outputs/
+
+# 환경
+.env
+.env.*
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# macOS
+.DS_Store
+.AppleDouble
+
+# Jupyter
+.ipynb_checkpoints/
