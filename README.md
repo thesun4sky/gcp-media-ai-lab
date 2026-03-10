@@ -27,98 +27,122 @@
 
 ---
 
-## 🏗️ 아키텍처
+## 🏗️ 전체 아키텍처
 
+```mermaid
+flowchart TD
+    subgraph INPUT["📥 Input"]
+        V(["🎥 Video\n(GCS)"])
+    end
+
+    subgraph GCP["☁️ GCP Media AI Pipeline"]
+        direction TB
+
+        subgraph ANALYZE["🔍 분석 레이어"]
+            VI["📊 Video Intelligence API\nLabel / Shot / Object"]
+            STT["🎙️ Speech-to-Text API\n음성 → 텍스트"]
+            TR["🌐 Translation API v3\nKO → EN / JA / ZH"]
+        end
+
+        subgraph PROCESS["⚙️ 처리 레이어"]
+            HL["🎬 Highlight Extractor\nffmpeg 클립 추출"]
+            REC["📈 BigQuery ML\nMatrix Factorization 추천"]
+            GEN["🤖 Vertex AI Gemini 1.5 Pro\n메타데이터 생성"]
+        end
+    end
+
+    subgraph OUTPUT["📤 Output"]
+        O1["📊 레이블 / 객체"]
+        O2["📝 자막 SRT/VTT"]
+        O3["🌍 다국어 자막"]
+        O4["🎞️ 하이라이트 클립"]
+        O5["📈 개인화 추천"]
+        O6["✍️ AI 메타데이터"]
+    end
+
+    V --> VI & STT
+    STT --> TR
+    VI --> HL & GEN
+    STT --> GEN
+    TR --> GEN
+    HL --> O4
+    REC --> O5
+    GEN --> O6
+    VI --> O1
+    STT --> O2
+    TR --> O3
+
+    style INPUT fill:#e8f4f8,stroke:#2196F3
+    style GCP fill:#f3e8ff,stroke:#9C27B0
+    style OUTPUT fill:#e8f5e9,stroke:#4CAF50
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│                        GCP Media AI Pipeline                        │
-│                                                                     │
-│  ┌──────────┐    ┌──────────────────────────────────────────────┐  │
-│  │  Input   │    │              Processing Layer                │  │
-│  │          │───▶│                                              │  │
-│  │  Video   │    │  ┌──────────┐  ┌──────────┐  ┌──────────┐  │  │
-│  │  (GCS)   │    │  │Video     │  │Speech    │  │Translate │  │  │
-│  └──────────┘    │  │Intlgence │  │-to-Text  │  │API v3    │  │  │
-│                  │  │(Label/   │  │(KO→Text) │  │(KO→EN/  │  │  │
-│  ┌──────────┐    │  │Shot/     │  │          │  │ JA/ZH)   │  │  │
-│  │ Vertex   │    │  │Object)   │  └──────────┘  └──────────┘  │  │
-│  │    AI    │───▶│  └──────────┘                              │  │
-│  │(Gemini   │    │       │                                    │  │
-│  │ 1.5 Pro) │    │       ▼                                    │  │
-│  └──────────┘    │  ┌──────────┐  ┌──────────┐               │  │
-│                  │  │Highlight │  │BigQuery  │               │  │
-│  ┌──────────┐    │  │Extractor │  │ML Recom- │               │  │
-│  │BigQuery  │───▶│  │(ffmpeg)  │  │mendation │               │  │
-│  │  (용도:  │    │  └──────────┘  └──────────┘               │  │
-│  │  분석/   │    └──────────────────────────────────────────────┘  │
-│  │  추천)   │                         │                            │
-│  └──────────┘                         ▼                            │
-│                  ┌──────────────────────────────────────────────┐  │
-│                  │              Output Layer                     │  │
-│                  │  📊 레이블  📝 자막(SRT/VTT)  🎬 하이라이트  │  │
-│                  │  🌐 다국어  🤖 AI 생성 메타데이터  📈 추천   │  │
-│                  └──────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────────────┘
 
-┌─────────────────────────────────────────────────────────────────────┐
-│                   Lab 07: GPU 최적화 레이어                         │
-│                                                                     │
-│  PyTorch 기본 연산  ──▶  torch.compile(backend="inductor")         │
-│                               │                                     │
-│                    ┌──────────┴──────────┐                         │
-│                    ▼                     ▼                          │
-│             CUDA + Triton          Apple MPS Metal                  │
-│          (GCP L4/A100: 2~5x)    (로컬 실험: 일부 3x+)             │
-└─────────────────────────────────────────────────────────────────────┘
+---
+
+## 🖥️ Lab 07 GPU 최적화 레이어
+
+```mermaid
+flowchart LR
+    PT["🐍 PyTorch\n고수준 연산"]
+    TC["⚙️ torch.compile\nbackend=inductor"]
+
+    PT -->|"compile"| TC
+
+    TC --> CUDA["🟢 CUDA GPU\nTriton CUDA 커널\nGCP L4 / A100\n2~5x 향상"]
+    TC --> MPS["🍎 Apple Silicon\nMetal 최적화\nMPS 백엔드\n일부 3x+"]
+    TC --> CPU["💻 CPU\nC++ 코드 생성\ninductor fallback"]
+
+    style PT fill:#EE4C2C,color:#fff
+    style TC fill:#ff9800,color:#fff
+    style CUDA fill:#1a73e8,color:#fff
+    style MPS fill:#555,color:#fff
+    style CPU fill:#9e9e9e,color:#fff
 ```
 
 ---
 
 ## 📂 프로젝트 구조
 
-```
-mediaAI/
-├── README.md
-├── setup/
-│   ├── requirements.txt           # Python 패키지
-│   ├── setup_gcp.sh               # GCP API 자동 활성화 스크립트
-│   ├── config.yaml.example        # 설정 예시
-│   └── config.yaml                # 실제 설정 (git 제외)
-├── src/                           # 공통 유틸리티 모듈
-│   ├── __init__.py
-│   ├── gcp_client.py              # GCP 클라이언트 초기화, GCS 업/다운로드
-│   ├── video_processor.py         # ffmpeg 기반 영상 처리
-│   └── subtitle_utils.py          # SRT/VTT 파싱 및 생성
-├── labs/
-│   ├── lab01_video_intelligence/  # 영상 AI 분석
-│   │   ├── README.md
-│   │   ├── analyze_video.py
-│   │   └── sample_output.json
-│   ├── lab02_speech_subtitle/     # 자막 자동 생성
-│   │   ├── README.md
-│   │   ├── generate_subtitle.py
-│   │   └── sample.srt
-│   ├── lab03_multilingual_subtitle/ # 다국어 번역
-│   │   ├── README.md
-│   │   └── translate_subtitle.py
-│   ├── lab04_highlight_extraction/  # 하이라이트 추출
-│   │   ├── README.md
-│   │   └── extract_highlights.py
-│   ├── lab05_content_recommendation/ # 콘텐츠 추천
-│   │   ├── README.md
-│   │   └── recommendation_system.py
-│   ├── lab06_generative_ai/       # 생성형 AI
-│   │   ├── README.md
-│   │   └── gemini_media_ai.py
-│   └── lab07_pytorch_triton/      # GPU 최적화 실험
-│       ├── README.md
-│       ├── benchmark.py
-│       └── gcp_vertex_setup.py
-├── outputs/                       # 실험 결과 (자동 생성)
-│   ├── lab01_result.json
-│   └── lab07_triton_benchmark.json
-└── notebooks/
-    └── media_ai_overview.ipynb
+```mermaid
+graph TD
+    ROOT["📁 mediaAI/"]
+
+    ROOT --> README["📄 README.md"]
+    ROOT --> SETUP["📁 setup/"]
+    ROOT --> SRC["📁 src/"]
+    ROOT --> LABS["📁 labs/"]
+    ROOT --> NB["📁 notebooks/"]
+    ROOT --> OUT["📁 outputs/"]
+
+    SETUP --> REQ["requirements.txt"]
+    SETUP --> SH["setup_gcp.sh"]
+    SETUP --> CFG["config.yaml.example"]
+
+    SRC --> GCP_C["gcp_client.py"]
+    SRC --> VP["video_processor.py"]
+    SRC --> SU["subtitle_utils.py"]
+
+    LABS --> L1["📁 lab01_video_intelligence/"]
+    LABS --> L2["📁 lab02_speech_subtitle/"]
+    LABS --> L3["📁 lab03_multilingual_subtitle/"]
+    LABS --> L4["📁 lab04_highlight_extraction/"]
+    LABS --> L5["📁 lab05_content_recommendation/"]
+    LABS --> L6["📁 lab06_generative_ai/"]
+    LABS --> L7["📁 lab07_pytorch_triton/"]
+
+    L1 --> L1A["analyze_video.py"]
+    L2 --> L2A["generate_subtitle.py"]
+    L3 --> L3A["translate_subtitle.py"]
+    L4 --> L4A["extract_highlights.py"]
+    L5 --> L5A["recommendation_system.py"]
+    L6 --> L6A["gemini_media_ai.py"]
+    L7 --> L7A["benchmark.py"]
+    L7 --> L7B["gcp_vertex_setup.py"]
+
+    style ROOT fill:#1a73e8,color:#fff
+    style LABS fill:#34a853,color:#fff
+    style SRC fill:#fbbc04,color:#000
+    style SETUP fill:#ea4335,color:#fff
 ```
 
 ---
@@ -204,13 +228,10 @@ python labs/lab01_video_intelligence/analyze_video.py \
 ```
 
 ```bash
-# 실행
 python labs/lab01_video_intelligence/analyze_video.py \
     --video gs://cloud-samples-data/video/animals.mp4 \
     --project YOUR_PROJECT_ID \
     --features LABEL_DETECTION SHOT_CHANGE_DETECTION OBJECT_TRACKING
-
-# 결과: outputs/lab01_result.json
 ```
 
 ---
@@ -222,18 +243,10 @@ python labs/lab01_video_intelligence/analyze_video.py \
 **지원 언어**: 한국어(`ko-KR`), 영어(`en-US`), 일본어(`ja-JP`) 등 125개 언어
 
 ```bash
-# 로컬 영상 파일에서 자막 생성
 python labs/lab02_speech_subtitle/generate_subtitle.py \
     --video /path/to/video.mp4 \
     --lang ko-KR \
     --output outputs/subtitle.srt
-
-# GCS URI 직접 사용
-python labs/lab02_speech_subtitle/generate_subtitle.py \
-    --audio gs://YOUR_BUCKET/audio.mp3 \
-    --lang ko-KR \
-    --format vtt \
-    --output outputs/subtitle.vtt
 ```
 
 **출력 예시** (`sample.srt`):
@@ -254,13 +267,10 @@ python labs/lab02_speech_subtitle/generate_subtitle.py \
 **학습 목표**: 한국어 자막을 영어/일본어/중국어로 자동 번역합니다.
 
 ```bash
-# 한국어 SRT → 다국어 번역
 python labs/lab03_multilingual_subtitle/translate_subtitle.py \
     --input outputs/subtitle.srt \
     --target en ja zh-CN \
     --output-dir outputs/multilingual/
-
-# 생성 파일: subtitle_en.srt, subtitle_ja.srt, subtitle_zh-CN.srt
 ```
 
 **지원 타임스탬프 형식**: SRT, VTT (타임코드 보존 번역)
@@ -272,17 +282,33 @@ python labs/lab03_multilingual_subtitle/translate_subtitle.py \
 **학습 목표**: Video Intelligence API 분석 결과를 활용하여 핵심 장면을 자동으로 추출하고 하이라이트 클립을 생성합니다.
 
 **하이라이트 점수 알고리즘**:
-```
-점수 = (레이블 다양성 × 0.3) + (객체 감지 수 × 0.3)
-     + (텍스트 검출 여부 × 0.2) + (장면 변화량 × 0.2)
+
+```mermaid
+flowchart LR
+    subgraph INPUTS["입력 신호"]
+        A["🏷️ 레이블 다양성\n× 0.3"]
+        B["📦 객체 감지 수\n× 0.3"]
+        C["📝 텍스트 검출\n× 0.2"]
+        D["🎬 장면 변화량\n× 0.2"]
+    end
+
+    SUM["➕ 가중 합산\nHighlight Score"]
+    TOP["🏆 Top-N 장면 선택"]
+    OUT["🎞️ 하이라이트 클립\n(ffmpeg 추출)"]
+
+    A & B & C & D --> SUM --> TOP --> OUT
+
+    style SUM fill:#ff9800,color:#fff
+    style TOP fill:#4CAF50,color:#fff
+    style OUT fill:#1a73e8,color:#fff
 ```
 
 ```bash
 python labs/lab04_highlight_extraction/extract_highlights.py \
     --video gs://YOUR_BUCKET/video.mp4 \
     --project YOUR_PROJECT_ID \
-    --duration 60 \           # 하이라이트 총 길이 (초)
-    --top-n 5 \               # 상위 N개 장면 선택
+    --duration 60 \
+    --top-n 5 \
     --output outputs/highlight.mp4
 ```
 
@@ -293,24 +319,35 @@ python labs/lab04_highlight_extraction/extract_highlights.py \
 **학습 목표**: 시청 이력 데이터를 BigQuery에 적재하고, Matrix Factorization 모델로 개인화 추천을 구현합니다.
 
 **추천 파이프라인**:
-```
-시청 이력 데이터 → BigQuery 업로드
-        ↓
-BigQuery ML MATRIX_FACTORIZATION 모델 학습
-        ↓
-ML.RECOMMEND으로 개인화 추천 생성
-        ↓
-콘텐츠 기반 필터링과 앙상블
+
+```mermaid
+flowchart TD
+    A["📋 시청 이력 데이터\nuser_id / video_id / watch_time"] -->|"업로드"| B
+
+    B[("🗄️ BigQuery\nmedia_ai_lab.watch_history")]
+
+    B --> C["🤖 BigQuery ML\nMATRIX_FACTORIZATION 모델 학습"]
+
+    C --> D["🔮 ML.RECOMMEND\n개인화 추천 점수 계산"]
+
+    D --> E["🔀 앙상블\n협업 필터링 + 콘텐츠 기반"]
+
+    E --> F["📱 최종 추천 결과\nTop-K 동영상"]
+
+    style A fill:#e3f2fd,stroke:#1976D2
+    style B fill:#fff3e0,stroke:#F57C00
+    style C fill:#f3e5f5,stroke:#7B1FA2
+    style D fill:#e8f5e9,stroke:#388E3C
+    style E fill:#fce4ec,stroke:#C62828
+    style F fill:#1a73e8,color:#fff,stroke:#1a73e8
 ```
 
 ```bash
-# 샘플 데이터로 추천 시스템 구축
 python labs/lab05_content_recommendation/recommendation_system.py \
     --project YOUR_PROJECT_ID \
     --dataset media_ai_lab \
-    --action full   # setup → train → recommend 순서로 실행
+    --action full
 
-# 특정 사용자 추천
 python labs/lab05_content_recommendation/recommendation_system.py \
     --action recommend \
     --user-id user_001 \
@@ -322,8 +359,6 @@ python labs/lab05_content_recommendation/recommendation_system.py \
 ### Lab 06 — 생성형 AI 콘텐츠 창작 (Vertex AI Gemini)
 
 **학습 목표**: Gemini 1.5 Pro로 영상 메타데이터(요약, 태그, 썸네일 설명, 제목 최적화)를 자동 생성합니다.
-
-**지원 기능**:
 
 | 기능 | 설명 | 입력 |
 |---|---|---|
@@ -337,12 +372,6 @@ python labs/lab05_content_recommendation/recommendation_system.py \
 ```bash
 python labs/lab06_generative_ai/gemini_media_ai.py \
     --project YOUR_PROJECT_ID \
-    --task summary \
-    --subtitle outputs/subtitle.srt \
-    --title "Media AI 소개 영상"
-
-# 전체 메타데이터 일괄 생성
-python labs/lab06_generative_ai/gemini_media_ai.py \
     --task all \
     --subtitle outputs/subtitle.srt \
     --output outputs/metadata.json
@@ -354,19 +383,36 @@ python labs/lab06_generative_ai/gemini_media_ai.py \
 
 **학습 목표**: `torch.compile(backend="inductor")`로 Triton 커널을 활용하여 Media AI 연산의 GPU 처리 속도를 비교 실험합니다.
 
-#### Triton이란?
+#### Triton 컴파일 흐름
 
-[Triton](https://triton-lang.org/)은 OpenAI가 개발한 GPU 프로그래밍 언어로, Python 문법으로 CUDA 커널을 작성할 수 있습니다. PyTorch 2.0+의 `torch.compile`에서 기본 백엔드(`inductor`)로 사용됩니다.
+```mermaid
+flowchart TD
+    PT["🐍 PyTorch\n고수준 연산 작성"]
+    COMPILE["⚙️ torch.compile\nbackend='inductor'"]
 
-```
-PyTorch 고수준 연산
-        │
-        ▼
-torch.compile(backend="inductor")
-        │
-        ├─── CUDA GPU → Triton CUDA 커널 자동 생성
-        ├─── Apple Silicon → Metal 최적화 (MPS)
-        └─── CPU → C++ 코드 생성
+    PT --> COMPILE
+
+    COMPILE --> IR["📐 Torch IR\n중간 표현 생성"]
+    IR --> TRITON["🔷 Triton Kernel\n자동 GPU 커널 생성"]
+
+    TRITON --> CUDA_K["🟢 CUDA PTX\nNVIDIA GPU 실행"]
+    TRITON --> METAL_K["🍎 Metal Shader\nApple Silicon 실행"]
+    TRITON --> CPP_K["💻 C++ Codegen\nCPU 실행"]
+
+    CUDA_K --> PERF_CUDA["⚡ 2~5x 향상\nGCP L4 / A100"]
+    METAL_K --> PERF_MPS["✅ 일부 3x+\nM1/M2/M3"]
+    CPP_K --> PERF_CPU["➖ 제한적 향상\nCPU 전용"]
+
+    style PT fill:#EE4C2C,color:#fff
+    style COMPILE fill:#ff9800,color:#fff
+    style IR fill:#9C27B0,color:#fff
+    style TRITON fill:#1565C0,color:#fff
+    style CUDA_K fill:#1a73e8,color:#fff
+    style METAL_K fill:#424242,color:#fff
+    style CPP_K fill:#757575,color:#fff
+    style PERF_CUDA fill:#e8f5e9,stroke:#4CAF50
+    style PERF_MPS fill:#fff8e1,stroke:#FF8F00
+    style PERF_CPU fill:#fafafa,stroke:#9e9e9e
 ```
 
 #### 실제 벤치마크 결과 (Apple MPS 환경)
@@ -379,21 +425,18 @@ torch.compile(backend="inductor")
 | 🎞️ Temporal BMM | (96, 32, 64) | 0.56ms | 0.72ms | ➖ 0.78x |
 | 🧠 학습 스텝 (F+B) | (4, 3, 16, 224, 224) | 127ms | 137ms | ➖ 0.93x |
 
-> **해석**: Apple MPS는 Metal 커널이 이미 최적화되어 있어 Triton inductor 오버헤드가 발생.
-> **GCP CUDA GPU(L4/A100)** 에서는 대부분 연산에서 **2~5x 향상** 기대.
+> **해석**: Apple MPS는 Metal 커널이 이미 최적화되어 있어 inductor 오버헤드 발생.
+> **GCP CUDA(L4/A100)** 에서는 대부분 연산에서 **2~5x 향상** 기대.
 
-#### GCP GPU 기대 성능 (CUDA 환경)
+#### GCP GPU 기대 성능 비교
 
-```
-┌──────────────────────────┬────────────┬─────────────────┐
-│ 실험                     │ PyTorch    │ Triton (예상)   │
-├──────────────────────────┼────────────┼─────────────────┤
-│ 프레임 정규화 (L4)       │ 기준       │ ~2-4x 향상      │
-│ 어텐션 Softmax (L4)      │ 기준       │ ~1.5-3x 향상    │
-│ FFN 블록 (A100)          │ 기준       │ ~2-5x 향상      │
-│ Temporal BMM (A100)      │ 기준       │ ~3-6x 향상      │
-│ 학습 스텝 전체 (A100)    │ 기준       │ ~1.5-2.5x 향상  │
-└──────────────────────────┴────────────┴─────────────────┘
+```mermaid
+xychart-beta
+    title "GCP CUDA 환경 Triton 예상 성능 향상 (배수)"
+    x-axis ["프레임 정규화", "Attention Softmax", "FFN 블록", "Temporal BMM", "학습 스텝"]
+    y-axis "성능 향상 배수 (x)" 0 --> 7
+    bar [3, 2.25, 3.5, 4.5, 2]
+    line [3, 2.25, 3.5, 4.5, 2]
 ```
 
 ```bash
@@ -477,17 +520,16 @@ python3 -m venv .venv
 
 ### Video Intelligence 타임아웃
 ```bash
-# --timeout 옵션으로 대기 시간 늘리기
 python labs/lab01_video_intelligence/analyze_video.py \
     --video gs://YOUR_BUCKET/long_video.mp4 \
     --timeout 600
 ```
 
-### torch.compile 오류 (macOS)
+### torch.compile 경고 (macOS)
 ```
 W0310 torch/_inductor/utils.py: Not enough SMs to use max_autotune_gemm mode
 ```
-→ 정상 동작 (Apple MPS는 SM 구조가 다름). 실험 결과에는 영향 없음.
+→ 정상 동작. Apple MPS는 SM 구조가 다름. 실험 결과에는 영향 없음.
 
 ---
 
@@ -516,7 +558,6 @@ W0310 torch/_inductor/utils.py: Not enough SMs to use max_autotune_gemm mode
 PR 및 Issue 환영합니다.
 
 ```bash
-# 개발 환경 설정
 git clone https://github.com/thesun4sky/gcp-media-ai-lab.git
 cd gcp-media-ai-lab
 python3 -m venv .venv && source .venv/bin/activate
