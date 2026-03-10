@@ -381,38 +381,68 @@ def train_recommendation_model(
     project_id: str,
     dataset_id: str,
 ) -> None:
-    """BigQuery ML을 사용하여 협업 필터링 추천 모델을 학습합니다."""
-    logger.info("추천 모델 학습 시작...")
+    """
+    사용자-영상 코사인 유사도 기반 협업 필터링 뷰를 생성합니다.
 
-    # 시청 이력을 평점으로 변환 후 행렬 분해 모델 학습
-    model_query = f"""
-    CREATE OR REPLACE MODEL `{project_id}.{dataset_id}.recommendation_model`
-    OPTIONS(
-        model_type = 'matrix_factorization',
-        user_col = 'user_id',
-        item_col = 'video_id',
-        rating_col = 'implicit_rating',
-        feedback_type = 'IMPLICIT',
-        num_factors = 16
-    )
-    AS
+    NOTE: BigQuery ML MATRIX_FACTORIZATION은 슬롯 예약(수백 달러/월)이
+    필요하므로, 온디맨드 환경에서는 표준 SQL 코사인 유사도로 대체합니다.
+    알고리즘: 사용자 벡터(암시적 평점)의 내적 / 두 벡터 크기의 곱
+    """
+    logger.info("코사인 유사도 기반 추천 뷰 생성 중...")
+
+    # 1. 암시적 평점 뷰
+    ratings_view_query = f"""
+    CREATE OR REPLACE VIEW `{project_id}.{dataset_id}.implicit_ratings` AS
     SELECT
         user_id,
         video_id,
-        -- 시청 완료율과 좋아요를 기반으로 암시적 평점 계산
         (
             completion_rate * 3.0
-            + CAST(liked AS FLOAT64) * 2.0
-            + CAST(shared AS FLOAT64) * 1.0
+            + CAST(liked    AS FLOAT64) * 2.0
+            + CAST(shared   AS FLOAT64) * 1.0
         ) AS implicit_rating
     FROM `{project_id}.{dataset_id}.watch_history`
-    WHERE completion_rate > 0.1  -- 10% 이상 시청한 영상만 포함
+    WHERE completion_rate > 0.1
     """
 
-    logger.info("BigQuery ML 모델 학습 쿼리 실행 중... (수 분 소요될 수 있습니다)")
-    query_job = client.query(model_query)
-    query_job.result()  # 완료 대기
-    logger.info("추천 모델 학습 완료")
+    # 2. 사용자-사용자 코사인 유사도 뷰
+    #    두 사용자가 공통으로 시청한 영상에 대해 코사인 유사도 계산
+    similarity_view_query = f"""
+    CREATE OR REPLACE VIEW `{project_id}.{dataset_id}.user_similarity` AS
+    WITH norms AS (
+        SELECT user_id,
+               SQRT(SUM(implicit_rating * implicit_rating)) AS norm
+        FROM `{project_id}.{dataset_id}.implicit_ratings`
+        GROUP BY user_id
+    ),
+    dot AS (
+        SELECT a.user_id AS user_a,
+               b.user_id AS user_b,
+               SUM(a.implicit_rating * b.implicit_rating) AS dot_product
+        FROM `{project_id}.{dataset_id}.implicit_ratings` a
+        JOIN `{project_id}.{dataset_id}.implicit_ratings` b
+          ON a.video_id = b.video_id AND a.user_id < b.user_id
+        GROUP BY a.user_id, b.user_id
+    )
+    SELECT
+        d.user_a,
+        d.user_b,
+        d.dot_product / (na.norm * nb.norm) AS cosine_similarity
+    FROM dot d
+    JOIN norms na ON na.user_id = d.user_a
+    JOIN norms nb ON nb.user_id = d.user_b
+    WHERE na.norm > 0 AND nb.norm > 0
+    """
+
+    for label, query in [
+        ("암시적 평점 뷰", ratings_view_query),
+        ("유사도 뷰", similarity_view_query),
+    ]:
+        logger.info(f"{label} 생성 중...")
+        client.query(query).result()
+        logger.info(f"{label} 생성 완료")
+
+    logger.info("추천 뷰 생성 완료 (코사인 유사도 방식)")
 
 
 def get_recommendations_for_user(
@@ -427,26 +457,40 @@ def get_recommendations_for_user(
 
     협업 필터링 결과와 콘텐츠 기반 필터링을 앙상블합니다.
     """
-    # 1. BigQuery ML 협업 필터링 추천
+    # 1. 코사인 유사도 기반 협업 필터링 추천
+    #    유사 사용자들이 시청한 영상 중 대상 사용자가 아직 보지 않은 영상을 추천
     collab_query = f"""
-    SELECT
-        predicted_video_id AS video_id,
-        predicted_implicit_rating_confidence AS confidence_score,
-        'collaborative' AS recommendation_type
-    FROM
-        ML.RECOMMEND(
-            MODEL `{project_id}.{dataset_id}.recommendation_model`,
-            (
-                SELECT @user_id AS user_id
-            )
+    WITH similar_users AS (
+        -- 대상 사용자와 유사한 다른 사용자 (상위 20명)
+        SELECT
+            CASE WHEN user_a = @user_id THEN user_b ELSE user_a END AS peer_user,
+            cosine_similarity
+        FROM `{project_id}.{dataset_id}.user_similarity`
+        WHERE user_a = @user_id OR user_b = @user_id
+        ORDER BY cosine_similarity DESC
+        LIMIT 20
+    ),
+    peer_ratings AS (
+        -- 유사 사용자들의 영상 평점 (유사도 가중 평균)
+        SELECT
+            r.video_id,
+            SUM(r.implicit_rating * s.cosine_similarity)
+              / SUM(s.cosine_similarity) AS confidence_score
+        FROM `{project_id}.{dataset_id}.implicit_ratings` r
+        JOIN similar_users s ON r.user_id = s.peer_user
+        WHERE r.video_id NOT IN (
+            SELECT video_id
+            FROM `{project_id}.{dataset_id}.watch_history`
+            WHERE user_id = @user_id
         )
-    WHERE predicted_video_id NOT IN (
-        -- 이미 시청한 영상 제외
-        SELECT video_id
-        FROM `{project_id}.{dataset_id}.watch_history`
-        WHERE user_id = @user_id
+        GROUP BY r.video_id
     )
-    ORDER BY predicted_implicit_rating_confidence DESC
+    SELECT
+        video_id,
+        confidence_score,
+        'collaborative' AS recommendation_type
+    FROM peer_ratings
+    ORDER BY confidence_score DESC
     LIMIT {top_k}
     """
 
