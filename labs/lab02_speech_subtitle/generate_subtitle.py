@@ -162,9 +162,9 @@ def prepare_audio_for_api(
     from google.cloud import speech
 
     if audio_path.startswith("gs://"):
-        # GCS URI: 인코딩과 샘플 레이트는 API가 자동 감지
+        # GCS URI: MP4/FLAC 등 다양한 포맷 → encoding=None으로 API 자동 감지
         logger.info(f"GCS URI 사용: {audio_path}")
-        return audio_path, speech.RecognitionConfig.AudioEncoding.LINEAR16, 16000
+        return audio_path, None, 16000
 
     # 로컬 파일 처리
     local_path = Path(audio_path)
@@ -225,6 +225,8 @@ def transcribe_audio(
     gcs_uri: str,
     language_code: str,
     model: str = "default",
+    encoding=None,
+    sample_rate_hertz: int = 16000,
 ) -> List[dict]:
     """
     Speech-to-Text API로 음성을 텍스트로 변환합니다.
@@ -233,6 +235,8 @@ def transcribe_audio(
         gcs_uri: 오디오 파일의 GCS URI
         language_code: 언어 코드 (예: ko-KR)
         model: 음성 인식 모델
+        encoding: 오디오 인코딩. None이면 API가 자동 감지 (GCS MP4 등에 필요)
+        sample_rate_hertz: 샘플 레이트. encoding=None 시 무시됨
 
     Returns:
         단어별 타임스탬프 포함 전사 결과 목록
@@ -241,14 +245,24 @@ def transcribe_audio(
 
     client = get_speech_client()
 
-    config = speech.RecognitionConfig(
-        encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
-        sample_rate_hertz=16000,
-        language_code=language_code,
-        enable_word_time_offsets=True,        # 단어별 타임스탬프 활성화
-        enable_automatic_punctuation=True,     # 자동 구두점 추가
-        model=model,
-    )
+    # encoding이 None이면 API 자동 감지 (MP4 등 GCS 직접 사용 시)
+    # encoding이 지정되면 WAV 업로드 후 명시적으로 설정
+    if encoding is None:
+        config = speech.RecognitionConfig(
+            language_code=language_code,
+            enable_word_time_offsets=True,
+            enable_automatic_punctuation=True,
+            model=model,
+        )
+    else:
+        config = speech.RecognitionConfig(
+            encoding=encoding,
+            sample_rate_hertz=sample_rate_hertz,
+            language_code=language_code,
+            enable_word_time_offsets=True,
+            enable_automatic_punctuation=True,
+            model=model,
+        )
 
     audio = speech.RecognitionAudio(uri=gcs_uri)
 
@@ -434,11 +448,13 @@ def main() -> int:
             config=config,
         )
 
-        # 음성 인식
+        # 음성 인식 (encoding=None이면 API가 자동 감지 — GCS MP4에 필요)
         words = transcribe_audio(
             gcs_uri=gcs_uri,
             language_code=args.language,
             model=args.model,
+            encoding=encoding,
+            sample_rate_hertz=sample_rate,
         )
 
         if not words:
@@ -473,7 +489,7 @@ def main() -> int:
                 print(f"  {f}")
         else:
             # 현재 디렉토리에 기본 이름으로 저장
-            default_output = f"data/output/subtitle_{args.language}"
+            default_output = f"outputs/subtitle_{args.language}"
             saved_files = save_subtitles(
                 entries=entries,
                 output_path=default_output,

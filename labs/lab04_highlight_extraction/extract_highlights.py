@@ -142,8 +142,8 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--output-dir",
-        default="data/output/highlights",
-        help="하이라이트 클립 저장 디렉토리 (기본: data/output/highlights)",
+        default="outputs/highlights",
+        help="하이라이트 클립 저장 디렉토리 (기본: outputs/highlights)",
     )
     parser.add_argument(
         "--max-highlights",
