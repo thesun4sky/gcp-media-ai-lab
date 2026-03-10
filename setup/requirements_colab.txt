@@ -26,3 +26,6 @@ librosa
 pyyaml
 python-dotenv
 tqdm
+
+# YouTube 다운로드
+yt-dlp

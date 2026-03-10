@@ -48,6 +48,9 @@ tqdm==4.66.2
 click==8.1.7
 rich==13.7.1
 
+# YouTube 다운로드
+yt-dlp==2024.3.10
+
 # Jupyter Notebook
 jupyter==1.0.0
 ipykernel==6.29.3
